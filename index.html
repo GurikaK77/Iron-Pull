@@ -11,46 +11,9 @@
 <meta name="apple-mobile-web-app-title" content="IronPull">
 <meta name="theme-color" content="#07070f">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script>
-(function(){
-  const c=document.createElement('canvas');
-  c.width=512;c.height=512;
-  const x=c.getContext('2d');
-  // Background rounded rect
-  x.fillStyle='#07070f';
-  x.beginPath();x.roundRect(0,0,512,512,100);x.fill();
-  // Gold gradient ring
-  const rg=x.createLinearGradient(60,60,452,452);
-  rg.addColorStop(0,'#c8a84b');rg.addColorStop(1,'#f5dfa0');
-  x.strokeStyle=rg;x.lineWidth=36;x.lineCap='round';
-  x.beginPath();x.arc(256,256,180,-Math.PI*0.6,Math.PI*1.2);x.stroke();
-  // Pull-up figure (stick figure doing pull-up)
-  x.strokeStyle='#f5dfa0';x.lineWidth=22;x.lineCap='round';x.lineJoin='round';
-  // bar at top
-  x.beginPath();x.moveTo(156,168);x.lineTo(356,168);x.stroke();
-  // arms up
-  x.beginPath();x.moveTo(200,168);x.lineTo(256,220);x.lineTo(312,168);x.stroke();
-  // body
-  x.beginPath();x.moveTo(256,220);x.lineTo(256,330);x.stroke();
-  // head
-  x.beginPath();x.arc(256,152,28,0,Math.PI*2);x.fillStyle='#f5dfa0';x.fill();
-  // legs bent up
-  x.strokeStyle='#f5dfa0';
-  x.beginPath();x.moveTo(256,330);x.lineTo(226,385);x.lineTo(248,420);x.stroke();
-  x.beginPath();x.moveTo(256,330);x.lineTo(286,385);x.lineTo(264,420);x.stroke();
-  // "IP" text below figure
-  x.fillStyle=rg;x.font='bold 68px sans-serif';x.textAlign='center';x.textBaseline='bottom';
-  x.fillText('IRONPULL',256,494);
-  const url=c.toDataURL('image/png');
-  document.getElementById('apple-icon').href=url;
-  document.getElementById('favicon').href=url;
-  // PWA manifest
-  const mf={name:'IronPull',short_name:'IronPull',start_url:'.',display:'standalone',background_color:'#07070f',theme_color:'#07070f',icons:[{src:url,sizes:'512x512',type:'image/png'}]};
-  const blob=new Blob([JSON.stringify(mf)],{type:'application/manifest+json'});
-  const ml=document.createElement('link');ml.rel='manifest';ml.href=URL.createObjectURL(blob);
-  document.head.appendChild(ml);
-})();
-</script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <style>
 :root{
   --bg:#07070f;--bg2:#0d0d1c;
@@ -60,7 +23,7 @@
   --grn:#00c96e;--grn-d:rgba(0,201,110,.13);
   --blu:#4a9eff;--blu-d:rgba(74,158,255,.13);
   --red:#ff4a6e;--red-d:rgba(255,74,110,.1);
-  --txt:#eeeef8;--txt2:#8888aa;--txt3:#5555780;
+  --txt:#eeeef8;--txt2:#8888aa;
   --nav:80px;--r:14px;--r2:22px;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -68,12 +31,10 @@ html,body{background:var(--bg);color:var(--txt);font-family:'DM Sans',sans-serif
 ::-webkit-scrollbar{display:none}
 #app{height:100dvh;display:flex;flex-direction:column;position:relative;overflow:hidden}
 
-/* ── PAGES ── */
 .page{flex:1;overflow-y:auto;padding:16px 16px calc(var(--nav) + 20px);display:none;animation:fadeUp .25s ease}
 .page.active{display:block}
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 
-/* ── BOTTOM NAV ── */
 .nav{
   position:fixed;bottom:0;left:0;right:0;height:var(--nav);
   background:var(--s1);border-top:1px solid var(--border);
@@ -99,7 +60,11 @@ html,body{background:var(--bg);color:var(--txt);font-family:'DM Sans',sans-serif
 .nav-fab.active{box-shadow:0 8px 36px rgba(200,168,75,.7)}
 .nav-fab svg{width:26px;height:26px;stroke-width:2.2}
 
-/* ── ONBOARDING ── */
+.auth{position:fixed;inset:0;background:var(--bg);z-index:200;display:flex;flex-direction:column;padding:48px 24px 36px;animation:fadeUp .3s ease}
+.auth.hidden{display:none}
+.auth-logo{font-family:'Bebas Neue',sans-serif;font-size:52px;letter-spacing:5px;background:linear-gradient(135deg,var(--gold),var(--gold3));-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-align:center;margin-bottom:2px}
+.auth-tag{font-size:12px;color:var(--txt2);text-align:center;letter-spacing:2px;text-transform:uppercase;margin-bottom:36px}
+
 .ob{position:fixed;inset:0;background:var(--bg);z-index:200;display:flex;flex-direction:column;padding:48px 24px 36px;animation:fadeUp .3s ease}
 .ob.hidden{display:none}
 .ob-logo{font-family:'Bebas Neue',sans-serif;font-size:52px;letter-spacing:5px;background:linear-gradient(135deg,var(--gold),var(--gold3));-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-align:center;margin-bottom:2px}
@@ -116,14 +81,12 @@ html,body{background:var(--bg);color:var(--txt);font-family:'DM Sans',sans-serif
 .av-opt{aspect-ratio:1;border-radius:50%;background:var(--s2);border:2px solid var(--border);font-size:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .2s,background .2s}
 .av-opt.sel{border-color:var(--gold);background:var(--gold-d)}
 
-/* ── FORM ELEMENTS ── */
 .fg{margin-bottom:14px}
 .fl{font-size:10px;color:var(--txt2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;display:block}
 .fi{background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:13px 16px;color:var(--txt);font-family:'DM Sans',sans-serif;font-size:15px;width:100%;outline:none;transition:border-color .2s}
 .fi:focus{border-color:var(--gold)}
 textarea.fi{resize:none;line-height:1.5}
 
-/* ── BUTTONS ── */
 .btn{border:none;border-radius:14px;padding:15px 24px;font-size:15px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;width:100%;transition:opacity .2s,transform .12s;margin-bottom:10px}
 .btn:active{transform:scale(.98);opacity:.9}
 .btn-gold{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#000}
@@ -131,17 +94,14 @@ textarea.fi{resize:none;line-height:1.5}
 .btn-blue{background:var(--blu-d);color:var(--blu);border:1px solid rgba(74,158,255,.3)}
 .btn-red{background:var(--red-d);color:var(--red);border:1px solid rgba(255,74,110,.3)}
 
-/* ── CARDS ── */
 .card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r2);padding:20px;margin-bottom:14px}
 .card-title{font-size:10px;color:var(--txt2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px}
 
-/* ── HOME ── */
 .home-top{display:flex;justify-content:space-between;align-items:flex-start;padding-top:10px;margin-bottom:22px}
 .home-greet{font-size:13px;color:var(--txt2);margin-bottom:2px}
 .home-name{font-size:22px;font-weight:600}
 .streak-pill{background:var(--gold-d);border:1px solid rgba(200,168,75,.35);border-radius:20px;padding:7px 13px;font-size:14px;color:var(--gold);display:flex;align-items:center;gap:5px}
 
-/* Ring */
 .ring-card{background:linear-gradient(145deg,var(--s1),var(--s2));border:1px solid var(--border);border-radius:var(--r2);display:flex;flex-direction:column;align-items:center;padding:28px 0 22px;margin-bottom:14px}
 .ring-wrap{position:relative;display:inline-flex;align-items:center;justify-content:center}
 .ring-inner{position:absolute;text-align:center}
@@ -149,23 +109,19 @@ textarea.fi{resize:none;line-height:1.5}
 .ring-lbl{font-size:10px;color:var(--txt2);letter-spacing:1px;text-transform:uppercase;margin-top:2px}
 .ring-goal{font-size:11px;color:var(--txt2);margin-top:10px;letter-spacing:.5px}
 
-/* Stat row */
 .stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:14px}
 .sc{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:16px 10px;text-align:center}
 .sc-v{font-family:'Bebas Neue',sans-serif;font-size:30px;color:var(--gold)}
 .sc-l{font-size:9px;color:var(--txt2);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
 
-/* Today */
 .today-card{background:linear-gradient(135deg,var(--s2),var(--s3));border:1px solid var(--border);border-radius:var(--r2);padding:20px;margin-bottom:14px}
 
-/* ── TAGS ── */
 .tag{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:500}
 .tag-g{background:var(--grn-d);color:var(--grn);border:1px solid rgba(0,201,110,.25)}
 .tag-b{background:var(--blu-d);color:var(--blu);border:1px solid rgba(74,158,255,.25)}
 .tag-r{background:var(--red-d);color:var(--red);border:1px solid rgba(255,74,110,.2)}
 .tag-gold{background:var(--gold-d);color:var(--gold);border:1px solid rgba(200,168,75,.3)}
 
-/* ── CALENDAR ── */
 .cal-top{display:flex;align-items:center;justify-content:space-between;padding-top:10px;margin-bottom:18px}
 .cal-month{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:2px}
 .cal-navs{display:flex;gap:8px}
@@ -190,7 +146,6 @@ textarea.fi{resize:none;line-height:1.5}
 .cal-btn:active{background:var(--s3)}
 .cal-btn .ic{font-size:26px}
 
-/* ── MODAL ── */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:150;display:flex;align-items:flex-end;backdrop-filter:blur(6px);animation:fadeUp .2s ease}
 .overlay.hidden{display:none}
 .modal{background:var(--s1);border-radius:26px 26px 0 0;padding:20px 18px 32px;width:100%;max-height:92dvh;overflow-y:auto;animation:slideUp .3s cubic-bezier(.34,1.56,.64,1)}
@@ -199,7 +154,6 @@ textarea.fi{resize:none;line-height:1.5}
 .mtitle{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;margin-bottom:3px}
 .msub{font-size:12px;color:var(--txt2);margin-bottom:18px}
 
-/* Sets */
 .sets-wrap{display:flex;flex-direction:column;gap:9px;margin-bottom:14px}
 .set-c{background:var(--s2);border:1.5px solid var(--border);border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:12px;transition:border-color .2s,background .2s}
 .set-c.done{border-color:var(--grn);background:var(--grn-d)}
@@ -212,7 +166,6 @@ textarea.fi{resize:none;line-height:1.5}
 .set-total{text-align:center;padding:12px;background:var(--s2);border-radius:12px;margin-bottom:14px;font-size:13px;color:var(--txt2)}
 .set-total span{font-family:'Bebas Neue',sans-serif;font-size:26px;color:var(--gold)}
 
-/* ── STATS ── */
 .sh{font-family:'Bebas Neue',sans-serif;font-size:34px;letter-spacing:2px;padding-top:10px;margin-bottom:4px}
 .ss{font-size:13px;color:var(--txt2);margin-bottom:18px}
 .hero{background:linear-gradient(135deg,var(--s2),var(--s3));border:1px solid var(--border);border-radius:var(--r2);padding:28px;text-align:center;margin-bottom:14px}
@@ -232,7 +185,6 @@ textarea.fi{resize:none;line-height:1.5}
 .bar-e{background:var(--s3)}
 .bl{font-size:9px;color:var(--txt2)}
 
-/* ── PROFILE ── */
 .prof-top{display:flex;flex-direction:column;align-items:center;padding:24px 0 20px}
 .p-av{width:90px;height:90px;border-radius:50%;background:var(--s2);border:3px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:46px;margin-bottom:12px;cursor:pointer;position:relative;overflow:hidden}
 .p-av img{width:100%;height:100%;object-fit:cover;border-radius:50%}
@@ -242,50 +194,67 @@ textarea.fi{resize:none;line-height:1.5}
 .p-quote{background:var(--s2);border-left:3px solid var(--gold);border-radius:0 var(--r) var(--r) 0;padding:14px 16px;margin-bottom:14px;font-size:14px;color:var(--txt2);font-style:italic;line-height:1.6}
 .divider{height:1px;background:var(--border);margin:14px 0}
 
-/* ── PROGRESS BAR ── */
-.prog-wrap{background:var(--s3);border-radius:8px;height:8px;overflow:hidden;margin-top:8px}
-.prog-fill{height:100%;border-radius:8px;background:linear-gradient(90deg,var(--gold),var(--gold2));transition:width 1s ease}
+.friend-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r2);padding:16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:border-color .2s}
+.friend-card:hover{border-color:var(--gold)}
+.friend-av{width:44px;height:44px;border-radius:50%;background:var(--s2);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.friend-info{flex:1}
+.friend-name{font-weight:600}
+.friend-detail{font-size:11px;color:var(--txt2);margin-top:2px}
+.friend-remove{background:none;border:none;color:var(--red);cursor:pointer;font-size:18px;padding:4px}
+
+.friend-view{position:fixed;inset:0;background:var(--bg);z-index:180;overflow-y:auto;padding:20px;animation:fadeUp .3s ease}
+.friend-view.hidden{display:none}
+.friend-view-header{display:flex;align-items:center;gap:14px;margin-bottom:20px}
 </style>
 </head>
 <body>
 <div id="app">
 
+<!-- AUTH SCREEN -->
+<div class="auth" id="auth-screen">
+  <div class="auth-logo">IRONPULL</div>
+  <div class="auth-tag">Elite Pull-Up Tracker</div>
+  <button class="btn btn-blue" onclick="authGoogleSignIn()" style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:16px;font-size:16px">
+    <span style="font-size:22px;font-weight:700">G</span> Sign in with Google
+  </button>
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;color:var(--txt2);font-size:12px">
+    <div style="flex:1;height:1px;background:var(--border)"></div>
+    <span>or</span>
+    <div style="flex:1;height:1px;background:var(--border)"></div>
+  </div>
+  <div class="fg"><input class="fi" id="auth-email" type="email" placeholder="Email"></div>
+  <div class="fg"><input class="fi" id="auth-pass" type="password" placeholder="Password"></div>
+  <button class="btn btn-gold" onclick="authSignIn()">Sign In</button>
+  <button class="btn btn-dark" onclick="authRegister()">Register</button>
+  <div style="text-align:center;margin-top:20px;font-size:13px;color:var(--txt2);cursor:pointer" onclick="resetPassword()">Forgot password?</div>
+</div>
+
 <!-- ONBOARDING -->
-<div class="ob" id="ob">
+<div class="ob hidden" id="ob">
   <div class="ob-logo">IRONPULL</div>
   <div class="ob-tag">Elite Pull-Up Tracker</div>
-  <div class="ob-dots" id="ob-dots">
-    <div class="ob-dot active"></div>
-    <div class="ob-dot"></div>
-    <div class="ob-dot"></div>
-  </div>
-
-  <!-- Step 1 -->
+  <div class="ob-dots" id="ob-dots"> <div class="ob-dot active"></div><div class="ob-dot"></div><div class="ob-dot"></div> </div>
   <div class="ob-step active" id="ob-s1">
     <div class="ob-h">WHO ARE YOU?</div>
-    <div class="ob-sub">Set up your profile to personalize the experience and track your journey.</div>
+    <div class="ob-sub">Set up your profile.</div>
     <div class="fg"><label class="fl">Your Name</label><input class="fi" id="ob-name" type="text" placeholder="e.g. Alex" maxlength="20"></div>
     <div class="fg"><label class="fl">Age</label><input class="fi" id="ob-age" type="number" placeholder="e.g. 25" min="10" max="99"></div>
     <div class="spacer"></div>
     <button class="btn btn-gold" onclick="obNext(1)">Continue →</button>
   </div>
-
-  <!-- Step 2 -->
   <div class="ob-step" id="ob-s2">
     <div class="ob-h">YOUR CHALLENGE</div>
-    <div class="ob-sub">How long is your challenge? Set a daily pull-up target and a quote to keep you fired up.</div>
-    <div class="fg"><label class="fl">Challenge Duration (days)</label><input class="fi" id="ob-days" type="number" value="30" min="7" max="365"></div>
-    <div class="fg"><label class="fl">Daily Pull-Up Target</label><input class="fi" id="ob-target" type="number" value="100" min="10" max="1000"></div>
-    <div class="fg"><label class="fl">Motivational Quote</label><input class="fi" id="ob-quote" type="text" placeholder="Pain is temporary, glory is forever." maxlength="90"></div>
+    <div class="ob-sub">Set your challenge and daily target.</div>
+    <div class="fg"><label class="fl">Duration (days)</label><input class="fi" id="ob-days" type="number" value="30" min="7" max="365"></div>
+    <div class="fg"><label class="fl">Daily Target</label><input class="fi" id="ob-target" type="number" value="100" min="10" max="1000"></div>
+    <div class="fg"><label class="fl">Motivational Quote</label><input class="fi" id="ob-quote" type="text" placeholder="Pain is temporary..." maxlength="90"></div>
     <div class="spacer"></div>
     <button class="btn btn-gold" onclick="obNext(2)">Continue →</button>
     <button class="btn btn-dark" onclick="obBack(1)">← Back</button>
   </div>
-
-  <!-- Step 3 -->
   <div class="ob-step" id="ob-s3">
     <div class="ob-h">PICK YOUR AVATAR</div>
-    <div class="ob-sub">Choose an emoji avatar that represents the warrior within you.</div>
+    <div class="ob-sub">Choose an emoji avatar.</div>
     <div class="av-grid" id="av-grid"></div>
     <div class="spacer"></div>
     <button class="btn btn-gold" onclick="obFinish()">🚀 Start Challenge</button>
@@ -298,6 +267,7 @@ textarea.fi{resize:none;line-height:1.5}
 <div class="page" id="page-cal"></div>
 <div class="page" id="page-stats"></div>
 <div class="page" id="page-prof"></div>
+<div class="page" id="page-friends"></div>
 
 <!-- NAV -->
 <div class="nav">
@@ -315,7 +285,10 @@ textarea.fi{resize:none;line-height:1.5}
       LOG
     </div>
   </div>
-  <button class="nb" id="nb-awards" onclick="go('stats')" style="visibility:hidden"></button>
+  <button class="nb" id="nb-friends" onclick="go('friends')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+    Friends
+  </button>
   <button class="nb" id="nb-prof" onclick="go('prof')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
     Profile
@@ -330,18 +303,36 @@ textarea.fi{resize:none;line-height:1.5}
   </div>
 </div>
 
+<!-- FRIEND VIEW -->
+<div class="friend-view hidden" id="friend-view"></div>
+
 <input type="file" id="avatar-upload" accept="image/*" style="display:none" onchange="handleAvatarUpload(this)">
 
 <script>
-// ── CONSTANTS ────────────────────────────────────────────────────────────────
+// Firebase
+const firebaseConfig = {
+  apiKey: "AIzaSyCjPbqIGxokUxUAe-CpexWIbhf62C1il68",
+  authDomain: "ironpull.firebaseapp.com",
+  databaseURL: "https://ironpull-default-rtdb.firebaseio.com",
+  projectId: "ironpull",
+  storageBucket: "ironpull.firebasestorage.app",
+  messagingSenderId: "883044066447",
+  appId: "1:883044066447:web:979b1a600c480377a17cfa"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.database();
+const googleProvider = new firebase.auth.GoogleAuthProvider();
+
+// Constants
 const AVATARS=['💪','🦾','🏋️','⚡','🔥','🎯','🏆','👊','🦁','🐺','🦅','🐉','⚔️','🛡️','🥇'];
 const DAYS_SHORT=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 
-// ── STATE ────────────────────────────────────────────────────────────────────
 let S={
-  user:null,        // {name,age,goalDays,target,quote,avatar,avatarImg,startDate}
-  logs:{},          // {'YYYY-MM-DD':{type:'workout'|'rest',sets:[n,...],total:n}}
+  uid:null,
+  user:null,
+  logs:{},
   cal:{y:0,m:0},
   curPage:'home',
   tmpUser:{},
@@ -349,30 +340,117 @@ let S={
   editAv:null,
   modalSets:[],
   logDate:null,
+  friends:{},
 };
 
-// ── PERSIST ──────────────────────────────────────────────────────────────────
-function save(){
-  localStorage.setItem('ip_u',JSON.stringify(S.user));
-  localStorage.setItem('ip_l',JSON.stringify(S.logs));
-}
-function load(){
-  try{S.user=JSON.parse(localStorage.getItem('ip_u'))||null}catch(e){}
-  try{S.logs=JSON.parse(localStorage.getItem('ip_l'))||{}}catch(e){}
-}
-function clearAll(){
-  if(!confirm('⚠️ This will permanently delete ALL your data. Continue?'))return;
-  localStorage.removeItem('ip_u');
-  localStorage.removeItem('ip_l');
-  location.reload();
+function userRef(){ return db.ref('users/' + S.uid); }
+function logsRef(){ return db.ref('users/' + S.uid + '/logs'); }
+function friendsRef(){ return db.ref('users/' + S.uid + '/friends'); }
+
+function syncFromFirebase(){
+  if(!S.uid) return;
+  userRef().once('value', snap => {
+    const val = snap.val();
+    if(val){
+      S.user = val;
+      S.logs = val.logs || {};
+      S.friends = val.friends || {};
+      render(S.curPage);
+      document.getElementById('ob').classList.add('hidden');
+    } else {
+      document.getElementById('ob').classList.remove('hidden');
+    }
+  });
 }
 
-// ── DATE UTILS ───────────────────────────────────────────────────────────────
-const fmt=d=>d.toISOString().split('T')[0];
-const todayStr=()=>fmt(new Date());
-const parseD=s=>new Date(s+'T00:00:00');
+function saveUserToFirebase(){
+  if(!S.uid) return;
+  userRef().set({
+    name: S.user.name,
+    age: S.user.age,
+    goalDays: S.user.goalDays,
+    target: S.user.target,
+    quote: S.user.quote,
+    avatar: S.user.avatar,
+    avatarImg: S.user.avatarImg || null,
+    startDate: S.user.startDate,
+    logs: S.logs,
+    friends: S.friends
+  });
+}
 
-// ── COMPUTED ─────────────────────────────────────────────────────────────────
+function saveLogsToFirebase(){
+  if(!S.uid) return;
+  logsRef().set(S.logs);
+}
+
+// Auth
+auth.onAuthStateChanged(user => {
+  if (user) {
+    S.uid = user.uid;
+    document.getElementById('auth-screen').classList.add('hidden');
+    syncFromFirebase();
+  } else {
+    S.uid = null;
+    S.user = null;
+    document.getElementById('auth-screen').classList.remove('hidden');
+    document.querySelectorAll('.ob, .page').forEach(e => e.classList.remove('active'));
+  }
+});
+
+function authGoogleSignIn(){
+  auth.signInWithPopup(googleProvider).catch(e => alert(e.message));
+}
+
+function authSignIn(){
+  const email = document.getElementById('auth-email').value;
+  const pass = document.getElementById('auth-pass').value;
+  auth.signInWithEmailAndPassword(email, pass).catch(e => alert(e.message));
+}
+
+function authRegister(){
+  const email = document.getElementById('auth-email').value;
+  const pass = document.getElementById('auth-pass').value;
+  auth.createUserWithEmailAndPassword(email, pass).catch(e => alert(e.message));
+}
+
+function resetPassword(){
+  const email = document.getElementById('auth-email').value;
+  if(!email) return alert('Enter email first');
+  auth.sendPasswordResetEmail(email).then(() => alert('Reset email sent!'));
+}
+
+function signOut(){
+  auth.signOut();
+}
+
+// Router
+function go(page){
+  if(!S.uid) return;
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('active'));
+  document.getElementById('nb-cal').classList.remove('active');
+  const pg = document.getElementById('page-'+page);
+  if(pg) pg.classList.add('active');
+  if(page==='cal') document.getElementById('nb-cal').classList.add('active');
+  else {
+    const nb = document.getElementById('nb-'+page);
+    if(nb) nb.classList.add('active');
+  }
+  S.curPage=page;
+  render(page);
+}
+
+function render(p){
+  if(!S.user) return;
+  if(p==='home') renderHome();
+  else if(p==='cal') renderCal();
+  else if(p==='stats') renderStats();
+  else if(p==='prof') renderProf();
+  else if(p==='friends') renderFriends();
+}
+
+// Computed
 function wDays(){return Object.entries(S.logs).filter(([,v])=>v.type==='workout')}
 function rDays(){return Object.entries(S.logs).filter(([,v])=>v.type==='rest')}
 function totalReps(){return wDays().reduce((s,[,v])=>s+(v.total||0),0)}
@@ -390,7 +468,6 @@ function streak(){
 function pct(){const g=S.user?.goalDays||30;return Math.min(100,Math.round(wDays().length/g*100))}
 function dLeft(){return Math.max(0,(S.user?.goalDays||30)-wDays().length)}
 
-// Set suggestions based on workout number
 function suggestSets(n){
   const t=S.user?.target||100;
   let count=n<=7?10:n<=14?8:n<=21?6:5;
@@ -399,25 +476,12 @@ function suggestSets(n){
   return Array.from({length:count},(_,i)=>i<rem?base+1:base);
 }
 
-// ── ROUTER ───────────────────────────────────────────────────────────────────
-function go(page){
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('active'));
-  document.getElementById('nb-cal').classList.remove('active');
-  document.getElementById('page-'+page).classList.add('active');
-  if(page==='cal')document.getElementById('nb-cal').classList.add('active');
-  else{const b=document.getElementById('nb-'+page);if(b)b.classList.add('active')}
-  S.curPage=page;
-  render(page);
-}
-function render(p){
-  if(p==='home')renderHome();
-  else if(p==='cal')renderCal();
-  else if(p==='stats')renderStats();
-  else if(p==='prof')renderProf();
-}
+// Date utils
+const fmt=d=>d.toISOString().split('T')[0];
+const todayStr=()=>fmt(new Date());
+const parseD=s=>new Date(s+'T00:00:00');
 
-// ── ONBOARDING ───────────────────────────────────────────────────────────────
+// Onboarding
 function initAvGrid(id,sel,onSel){
   const g=document.getElementById(id);
   g.innerHTML=AVATARS.map((a,i)=>`<div class="av-opt${a===sel?' sel':''}" onclick="${onSel}(this,'${a}')">${a}</div>`).join('');
@@ -431,15 +495,13 @@ function selEditAv(el,av){
   el.classList.add('sel');S.editAv=av;
 }
 function obDots(step){
-  document.querySelectorAll('.ob-dot').forEach((d,i)=>{
-    d.classList.toggle('active',i<=step-1);
-  });
+  document.querySelectorAll('.ob-dot').forEach((d,i)=>d.classList.toggle('active',i<=step-1));
 }
 function obNext(step){
   if(step===1){
     const name=document.getElementById('ob-name').value.trim();
     const age=parseInt(document.getElementById('ob-age').value);
-    if(!name||!age){alert('Please fill in all fields.');return}
+    if(!name||!age){alert('Fill all fields');return}
     S.tmpUser={name,age};
   }else if(step===2){
     const days=parseInt(document.getElementById('ob-days').value)||30;
@@ -458,17 +520,17 @@ function obBack(toStep){
 }
 function obFinish(){
   S.user={...S.tmpUser,avatar:S.selAv,avatarImg:null,startDate:todayStr()};
-  save();
+  S.friends = {};
+  saveUserToFirebase();
   document.getElementById('ob').classList.add('hidden');
   go('home');
 }
 
-// ── HOME ─────────────────────────────────────────────────────────────────────
+// Home
 function renderHome(){
   const u=S.user,p=pct(),wd=wDays().length,dl=dLeft(),st=streak();
   const R=82,C=2*Math.PI*R,filled=C*(p/100);
   const ringCol=p>=100?'#00c96e':'#c8a84b';
-  const glow=p>=100?'rgba(0,201,110,.35)':'rgba(200,168,75,.35)';
   const entry=S.logs[todayStr()];
   const hr=new Date().getHours();
   const greet=hr<12?'Good morning':hr<17?'Good afternoon':'Good evening';
@@ -496,20 +558,13 @@ function renderHome(){
       </div>
       <div class="streak-pill">🔥 ${st} day${st!==1?'s':''}</div>
     </div>
-
     <div class="ring-card">
       <div class="ring-wrap">
         <svg width="210" height="210" viewBox="0 0 210 210">
-          <defs>
-            <filter id="glow"><feGaussianBlur stdDeviation="4" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-          </defs>
           <circle cx="105" cy="105" r="${R}" fill="none" stroke="#1a1a30" stroke-width="15"/>
-          <circle cx="105" cy="105" r="${R}" fill="none" stroke="${glow}" stroke-width="15"
-            stroke-linecap="round" stroke-dasharray="${filled} ${C-filled}"
-            style="transform:rotate(-90deg);transform-origin:center"/>
           <circle cx="105" cy="105" r="${R}" fill="none" stroke="${ringCol}" stroke-width="13"
             stroke-linecap="round" stroke-dasharray="${filled} ${C-filled}"
-            style="transform:rotate(-90deg);transform-origin:center" filter="url(#glow)"/>
+            style="transform:rotate(-90deg);transform-origin:center"/>
         </svg>
         <div class="ring-inner">
           <div class="ring-pct">${p}%</div>
@@ -518,19 +573,16 @@ function renderHome(){
       </div>
       <div class="ring-goal">${wd} of ${u.goalDays} days done</div>
     </div>
-
     <div class="stat-row">
       <div class="sc"><div class="sc-v">${wd}</div><div class="sc-l">Trained</div></div>
       <div class="sc"><div class="sc-v">${dl}</div><div class="sc-l">Left</div></div>
       <div class="sc"><div class="sc-v">${st}</div><div class="sc-l">Streak 🔥</div></div>
     </div>
-
     <div class="today-card">
       <div class="card-title">TODAY — ${new Date().toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'})}</div>
       <div style="margin-bottom:14px">${statusHTML}</div>
       ${btnHTML}
     </div>
-
     <div class="card">
       <div class="card-title">Your Motivation</div>
       <div style="font-style:italic;color:var(--txt2);line-height:1.6;font-size:14px">"${u.quote}"</div>
@@ -538,7 +590,7 @@ function renderHome(){
   `;
 }
 
-// ── CALENDAR ─────────────────────────────────────────────────────────────────
+// Calendar
 function renderCal(){
   const now=new Date();
   if(!S.cal.y){S.cal={y:now.getFullYear(),m:now.getMonth()}}
@@ -583,12 +635,8 @@ function renderCal(){
       <div class="li"><div class="ld" style="background:var(--gold);border-radius:50%"></div>Today</div>
     </div>
     <div class="cal-actions">
-      <div class="cal-btn" onclick="openLog('${td}')">
-        <div class="ic">🏋️</div><div>Log Today</div>
-      </div>
-      <div class="cal-btn" onclick="openDatePick()">
-        <div class="ic">📅</div><div>Log Other Day</div>
-      </div>
+      <div class="cal-btn" onclick="openLog('${td}')"><div class="ic">🏋️</div><div>Log Today</div></div>
+      <div class="cal-btn" onclick="openDatePick()"><div class="ic">📅</div><div>Log Other Day</div></div>
     </div>
   `;
 }
@@ -599,7 +647,7 @@ function chMo(dir){
   S.cal={y,m};renderCal();
 }
 
-// ── LOG MODAL ────────────────────────────────────────────────────────────────
+// Log Modal
 function openLog(dateStr){
   S.logDate=dateStr;
   const existing=S.logs[dateStr];
@@ -616,9 +664,7 @@ function openDatePick(){
   document.getElementById('modal-body').innerHTML=`
     <div class="mtitle">LOG A DATE</div>
     <div class="msub">Choose any past date to log.</div>
-    <div class="fg"><label class="fl">Date</label>
-      <input type="date" class="fi" id="modal-dp" max="${todayStr()}" value="${todayStr()}">
-    </div>
+    <div class="fg"><input type="date" class="fi" id="modal-dp" max="${todayStr()}" value="${todayStr()}"></div>
     <button class="btn btn-gold" onclick="confirmDp()">Continue →</button>
     <button class="btn btn-dark" onclick="hideModal()">Cancel</button>
   `;
@@ -681,32 +727,35 @@ function saveWorkout(){
   const sets=(done.length?done:all).map(s=>s.reps);
   const total=sets.reduce((s,v)=>s+v,0);
   S.logs[S.logDate]={type:'workout',sets,total};
-  save();hideModal();render(S.curPage);
+  saveLogsToFirebase();
+  hideModal();
+  render(S.curPage);
 }
 function saveRest(ds){
   S.logs[ds]={type:'rest',sets:[],total:0};
-  save();render(S.curPage);
+  saveLogsToFirebase();
+  render(S.curPage);
 }
-function saveRestFromModal(){
-  saveRest(S.logDate);hideModal();
-}
+function saveRestFromModal(){saveRest(S.logDate); hideModal();}
 function deleteLog(){
   if(!confirm('Remove this log entry?'))return;
-  delete S.logs[S.logDate];save();hideModal();render(S.curPage);
+  delete S.logs[S.logDate];
+  saveLogsToFirebase();
+  hideModal();
+  render(S.curPage);
 }
 
 function showModal(){document.getElementById('modal-overlay').classList.remove('hidden')}
 function hideModal(){document.getElementById('modal-overlay').classList.add('hidden')}
 document.getElementById('modal-overlay').addEventListener('click',function(e){if(e.target===this)hideModal()});
 
-// ── STATS ────────────────────────────────────────────────────────────────────
+// Stats
 function renderStats(){
   const tr=totalReps(),wd=wDays(),rd=rDays(),st=streak(),bd=bestDay(),ag=avgDay();
   const g=S.user?.goalDays||30,t=S.user?.target||100;
   const hitRate=wd.length?Math.round(wd.filter(([,v])=>v.total>=t).length/wd.length*100):0;
   const p=pct();
 
-  // Last 7 days chart
   const l7=Array.from({length:7},(_,i)=>{
     const d=new Date();d.setDate(d.getDate()-(6-i));
     const k=fmt(d),e=S.logs[k];
@@ -716,22 +765,13 @@ function renderStats(){
   const bars=l7.map(d=>{
     const h=d.type==='rest'?22:Math.max(5,(d.val/mx)*80);
     const cls=d.type==='workout'?'bar-w':d.type==='rest'?'bar-r':'bar-e';
-    return`<div class="bw">
-      <div style="font-size:9px;color:var(--txt2);margin-bottom:2px">${d.val||''}</div>
-      <div class="bar ${cls}" style="height:${h}px"></div>
-      <div class="bl">${d.label}</div>
-    </div>`;
+    return`<div class="bw"><div style="font-size:9px;color:var(--txt2);margin-bottom:2px">${d.val||''}</div><div class="bar ${cls}" style="height:${h}px"></div><div class="bl">${d.label}</div></div>`;
   }).join('');
 
   document.getElementById('page-stats').innerHTML=`
     <div class="sh">STATISTICS</div>
     <div class="ss">Full performance breakdown</div>
-
-    <div class="hero">
-      <div class="hero-n">${tr.toLocaleString()}</div>
-      <div class="hero-l">Total Pull-Ups Completed</div>
-    </div>
-
+    <div class="hero"><div class="hero-n">${tr.toLocaleString()}</div><div class="hero-l">Total Pull-Ups</div></div>
     <div class="sg">
       <div class="sgc"><div class="sgc-v">${wd.length}</div><div class="sgc-l">Workouts</div></div>
       <div class="sgc"><div class="sgc-v">${rd.length}</div><div class="sgc-l">Rest Days</div></div>
@@ -740,97 +780,62 @@ function renderStats(){
       <div class="sgc"><div class="sgc-v">${ag}</div><div class="sgc-l">Daily Avg</div></div>
       <div class="sgc"><div class="sgc-v">${hitRate}%</div><div class="sgc-l">Target Hit</div></div>
     </div>
-
-    <div class="chart-box">
-      <div class="chart-l">Last 7 Days</div>
-      <div class="bars">${bars}</div>
-    </div>
-
+    <div class="chart-box"><div class="chart-l">Last 7 Days</div><div class="bars">${bars}</div></div>
     <div class="card">
       <div class="card-title">Challenge Progress</div>
-      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-        <span style="font-size:14px;color:var(--txt2)">Days Completed</span>
-        <span style="font-weight:600">${wd.length} / ${g}</span>
-      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:14px;color:var(--txt2)">Days Completed</span><span style="font-weight:600">${wd.length} / ${g}</span></div>
       <div class="prog-wrap"><div class="prog-fill" style="width:${p}%"></div></div>
       <div style="margin-top:10px;font-size:12px;color:var(--txt2)">${p}% of ${g}-day challenge complete · ${dLeft()} days remaining</div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">Milestones</div>
-      ${[
-        {label:'First Workout',icon:'🥇',done:wd.length>=1},
-        {label:'7-Day Streak',icon:'🔥',done:st>=7||wDays().length>=7},
-        {label:'1,000 Reps',icon:'💪',done:tr>=1000},
-        {label:'10 Workouts',icon:'🏋️',done:wd.length>=10},
-        {label:'5,000 Reps',icon:'⚡',done:tr>=5000},
-        {label:'30 Workouts',icon:'🏆',done:wd.length>=30},
-      ].map(m=>`
-        <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
-          <div style="font-size:22px;opacity:${m.done?1:.3}">${m.icon}</div>
-          <div style="flex:1;font-size:14px;${m.done?'':'color:var(--txt2)'}">${m.label}</div>
-          ${m.done?'<div class="tag tag-g">Earned</div>':'<div style="font-size:12px;color:var(--txt2)">Locked</div>'}
-        </div>
-      `).join('')}
     </div>
   `;
 }
 
-// ── PROFILE ──────────────────────────────────────────────────────────────────
+// Profile
 function renderProf(){
   const u=S.user;
   const av=u.avatarImg?`<img src="${u.avatarImg}">`:u.avatar;
 
   document.getElementById('page-prof').innerHTML=`
     <div class="sh">PROFILE</div>
-
     <div class="prof-top">
-      <div class="p-av" onclick="document.getElementById('avatar-upload').click()">
-        ${av}
-        <div class="p-av-ovr">CHANGE</div>
-      </div>
-      <div class="p-name">${u.name.toUpperCase()}</div>
+      <div class="p-av" onclick="document.getElementById('avatar-upload').click()">${av}<div class="p-av-ovr">CHANGE</div></div>
+      <div class="p-name">${escapeHtml(u.name.toUpperCase())}</div>
       <div class="p-age">Age ${u.age} · ${u.goalDays}-day challenge</div>
     </div>
-
-    <div class="p-quote">"${u.quote}"</div>
-
+    <div class="p-quote">"${escapeHtml(u.quote)}"</div>
     <div class="card">
       <div class="card-title">Edit Profile</div>
-      <div class="fg"><label class="fl">Name</label><input class="fi" id="e-name" value="${u.name}" maxlength="20"></div>
+      <div class="fg"><label class="fl">Name</label><input class="fi" id="e-name" value="${escapeHtml(u.name)}" maxlength="20"></div>
       <div class="fg"><label class="fl">Age</label><input class="fi" id="e-age" type="number" value="${u.age}" min="10" max="99"></div>
       <div class="fg"><label class="fl">Goal Days</label><input class="fi" id="e-days" type="number" value="${u.goalDays}" min="7" max="365"></div>
-      <div class="fg"><label class="fl">Daily Pull-Up Target</label><input class="fi" id="e-target" type="number" value="${u.target||100}" min="10"></div>
-      <div class="fg"><label class="fl">Motivational Quote</label><input class="fi" id="e-quote" value="${u.quote}" maxlength="90"></div>
-      <div class="fg">
-        <label class="fl">Avatar Emoji</label>
-        <div class="av-grid" id="edit-av-grid"></div>
-      </div>
+      <div class="fg"><label class="fl">Daily Target</label><input class="fi" id="e-target" type="number" value="${u.target||100}" min="10"></div>
+      <div class="fg"><label class="fl">Quote</label><input class="fi" id="e-quote" value="${escapeHtml(u.quote)}" maxlength="90"></div>
+      <div class="fg"><label class="fl">Avatar Emoji</label><div class="av-grid" id="edit-av-grid"></div></div>
       <button class="btn btn-gold" id="save-btn" onclick="saveProf()">Save Changes</button>
     </div>
-
     <div class="divider"></div>
-    <button class="btn btn-red" onclick="clearAll()">🗑 Clear All Data</button>
+    <button class="btn btn-red" onclick="signOut()">🚪 Sign Out</button>
     <div style="height:10px"></div>
   `;
-
-  initAvGrid('edit-av-grid',u.avatar,'selEditAv');
+  initAvGrid('edit-av-grid', u.avatar, 'selEditAv');
   S.editAv=null;
+}
+
+function escapeHtml(str){
+  return str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[m]);
 }
 
 function saveProf(){
   const name=document.getElementById('e-name').value.trim();
   if(!name){alert('Name cannot be empty.');return}
-  S.user={
-    ...S.user,
-    name,
+  S.user={...S.user, name,
     age:parseInt(document.getElementById('e-age').value)||S.user.age,
     goalDays:parseInt(document.getElementById('e-days').value)||S.user.goalDays,
     target:parseInt(document.getElementById('e-target').value)||S.user.target,
     quote:document.getElementById('e-quote').value.trim()||S.user.quote,
     avatar:S.editAv||S.user.avatar,
   };
-  save();
+  saveUserToFirebase();
   const btn=document.getElementById('save-btn');
   if(btn){btn.textContent='✓ Saved!';btn.style.background='var(--grn)';btn.style.color='#000';
     setTimeout(()=>{btn.textContent='Save Changes';btn.style.background='';btn.style.color=''},2000)}
@@ -840,14 +845,121 @@ function saveProf(){
 function handleAvatarUpload(input){
   const file=input.files[0];if(!file)return;
   const r=new FileReader();
-  r.onload=e=>{S.user.avatarImg=e.target.result;save();renderProf()};
+  r.onload=e=>{S.user.avatarImg=e.target.result;saveUserToFirebase();renderProf()};
   r.readAsDataURL(file);
 }
 
-// ── INIT ─────────────────────────────────────────────────────────────────────
-load();
-initAvGrid('av-grid',S.selAv,'selAv');
-if(S.user){document.getElementById('ob').classList.add('hidden');go('home')}
+// Friends
+function renderFriends(){
+  const friends = S.friends || {};
+  const friendList = Object.entries(friends);
+
+  document.getElementById('page-friends').innerHTML=`
+    <div class="sh">FRIENDS</div>
+    <div class="ss">Your pull-up crew</div>
+    <div class="fg">
+      <label class="fl">Add Friend by UID</label>
+      <input class="fi" id="friend-uid-input" placeholder="Friend's User ID">
+    </div>
+    <button class="btn btn-gold" onclick="addFriend()">+ Add Friend</button>
+    <div style="margin-top:14px">
+      ${friendList.length===0 ? '<div style="color:var(--txt2);text-align:center;padding:20px">No friends yet. Add someone!</div>' : ''}
+      ${friendList.map(([uid]) => {
+        const friend = friends[uid] || {};
+        return `<div class="friend-card" onclick="viewFriend('${uid}')">
+          <div class="friend-av">${friend.avatar||'👤'}</div>
+          <div class="friend-info">
+            <div class="friend-name">${escapeHtml(friend.name||'Unknown')}</div>
+            <div class="friend-detail">Tap to view stats</div>
+          </div>
+          <button class="friend-remove" onclick="event.stopPropagation(); removeFriend('${uid}')">✕</button>
+        </div>`;
+      }).join('')}
+    </div>
+  `;
+}
+
+function addFriend(){
+  const uid = document.getElementById('friend-uid-input').value.trim();
+  if(!uid) return alert('Enter a UID');
+  if(uid === S.uid) return alert('Cannot add yourself');
+  db.ref('users/' + uid).once('value').then(snap => {
+    const val = snap.val();
+    if(!val) return alert('User not found');
+    if(!S.friends) S.friends = {};
+    S.friends[uid] = { name: val.name, avatar: val.avatar, avatarImg: val.avatarImg || null };
+    friendsRef().set(S.friends);
+    render('friends');
+  }).catch(e => alert('Error: '+e.message));
+}
+
+function removeFriend(uid){
+  if(!confirm('Remove this friend?')) return;
+  delete S.friends[uid];
+  friendsRef().set(S.friends);
+  render('friends');
+}
+
+function viewFriend(uid){
+  db.ref('users/' + uid).once('value').then(snap => {
+    const f = snap.val();
+    if(!f) return alert('User no longer exists');
+    showFriendView(uid, f);
+  });
+}
+
+function showFriendView(uid, f){
+  const logs = f.logs || {};
+  const w = Object.entries(logs).filter(([,v])=>v.type==='workout');
+  const r = Object.entries(logs).filter(([,v])=>v.type==='rest');
+  const total = w.reduce((s,[,v])=>s+(v.total||0),0);
+  const best = w.length ? Math.max(...w.map(([,v])=>v.total||0)) : 0;
+  const avg = w.length ? Math.round(total/w.length) : 0;
+  const streak = (()=>{
+    let n=0,d=new Date();
+    while(true){
+      const k=fmt(d),e=logs[k];
+      if(!e||e.type!=='workout'){if(k===todayStr()&&!e){d.setDate(d.getDate()-1);continue}break}
+      n++;d.setDate(d.getDate()-1);
+    }
+    return n;
+  })();
+  const p = f.goalDays ? Math.min(100, Math.round(w.length/f.goalDays*100)) : 0;
+
+  const av = f.avatarImg ? `<img src="${f.avatarImg}" style="width:60px;height:60px;border-radius:50%;object-fit:cover">` : f.avatar;
+
+  document.getElementById('friend-view').innerHTML = `
+    <div class="friend-view-header">
+      <button class="btn btn-dark" style="width:auto;padding:8px 16px;font-size:14px" onclick="closeFriendView()">← Back</button>
+      <div style="flex:1;text-align:right">
+        <button class="btn btn-dark" style="width:auto;padding:8px 16px;font-size:14px" onclick="removeFriend('${uid}');closeFriendView()">Remove Friend</button>
+      </div>
+    </div>
+    <div class="prof-top" style="padding-top:0">
+      <div style="font-size:60px">${av}</div>
+      <div class="p-name">${escapeHtml(f.name.toUpperCase())}</div>
+      <div class="p-age">Age ${f.age} · ${f.goalDays}-day challenge</div>
+    </div>
+    <div class="hero"><div class="hero-n">${total.toLocaleString()}</div><div class="hero-l">Total Pull-Ups</div></div>
+    <div class="sg">
+      <div class="sgc"><div class="sgc-v">${w.length}</div><div class="sgc-l">Workouts</div></div>
+      <div class="sgc"><div class="sgc-v">${r.length}</div><div class="sgc-l">Rest Days</div></div>
+      <div class="sgc"><div class="sgc-v">${streak}</div><div class="sgc-l">🔥 Streak</div></div>
+      <div class="sgc"><div class="sgc-v">${best}</div><div class="sgc-l">Best Day</div></div>
+      <div class="sgc"><div class="sgc-v">${avg}</div><div class="sgc-l">Daily Avg</div></div>
+      <div class="sgc"><div class="sgc-v">${p}%</div><div class="sgc-l">Complete</div></div>
+    </div>
+    ${f.quote ? `<div class="p-quote">"${escapeHtml(f.quote)}"</div>` : ''}
+  `;
+  document.getElementById('friend-view').classList.remove('hidden');
+}
+
+function closeFriendView(){
+  document.getElementById('friend-view').classList.add('hidden');
+}
+
+// Init
+initAvGrid('av-grid', S.selAv, 'selAv');
 </script>
 </body>
 </html>
