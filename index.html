@@ -4,7 +4,53 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>IronPull</title>
+<link id="apple-icon" rel="apple-touch-icon">
+<link id="favicon" rel="icon" type="image/png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="IronPull">
+<meta name="theme-color" content="#07070f">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script>
+(function(){
+  const c=document.createElement('canvas');
+  c.width=512;c.height=512;
+  const x=c.getContext('2d');
+  // Background rounded rect
+  x.fillStyle='#07070f';
+  x.beginPath();x.roundRect(0,0,512,512,100);x.fill();
+  // Gold gradient ring
+  const rg=x.createLinearGradient(60,60,452,452);
+  rg.addColorStop(0,'#c8a84b');rg.addColorStop(1,'#f5dfa0');
+  x.strokeStyle=rg;x.lineWidth=36;x.lineCap='round';
+  x.beginPath();x.arc(256,256,180,-Math.PI*0.6,Math.PI*1.2);x.stroke();
+  // Pull-up figure (stick figure doing pull-up)
+  x.strokeStyle='#f5dfa0';x.lineWidth=22;x.lineCap='round';x.lineJoin='round';
+  // bar at top
+  x.beginPath();x.moveTo(156,168);x.lineTo(356,168);x.stroke();
+  // arms up
+  x.beginPath();x.moveTo(200,168);x.lineTo(256,220);x.lineTo(312,168);x.stroke();
+  // body
+  x.beginPath();x.moveTo(256,220);x.lineTo(256,330);x.stroke();
+  // head
+  x.beginPath();x.arc(256,152,28,0,Math.PI*2);x.fillStyle='#f5dfa0';x.fill();
+  // legs bent up
+  x.strokeStyle='#f5dfa0';
+  x.beginPath();x.moveTo(256,330);x.lineTo(226,385);x.lineTo(248,420);x.stroke();
+  x.beginPath();x.moveTo(256,330);x.lineTo(286,385);x.lineTo(264,420);x.stroke();
+  // "IP" text below figure
+  x.fillStyle=rg;x.font='bold 68px sans-serif';x.textAlign='center';x.textBaseline='bottom';
+  x.fillText('IRONPULL',256,494);
+  const url=c.toDataURL('image/png');
+  document.getElementById('apple-icon').href=url;
+  document.getElementById('favicon').href=url;
+  // PWA manifest
+  const mf={name:'IronPull',short_name:'IronPull',start_url:'.',display:'standalone',background_color:'#07070f',theme_color:'#07070f',icons:[{src:url,sizes:'512x512',type:'image/png'}]};
+  const blob=new Blob([JSON.stringify(mf)],{type:'application/manifest+json'});
+  const ml=document.createElement('link');ml.rel='manifest';ml.href=URL.createObjectURL(blob);
+  document.head.appendChild(ml);
+})();
+</script>
 <style>
 :root{
   --bg:#07070f;--bg2:#0d0d1c;
