@@ -801,6 +801,10 @@ function renderProf(){
       <div class="p-av" onclick="document.getElementById('avatar-upload').click()">${av}<div class="p-av-ovr">CHANGE</div></div>
       <div class="p-name">${escapeHtml(u.name.toUpperCase())}</div>
       <div class="p-age">Age ${u.age} · ${u.goalDays}-day challenge</div>
+      <div style="margin-top:8px;display:flex;align-items:center;gap:6px;justify-content:center">
+        <span style="font-size:11px;color:var(--txt2);background:var(--s2);padding:4px 12px;border-radius:12px;font-family:'DM Mono',monospace;letter-spacing:0.5px;">UID: ${S.uid}</span>
+        <button onclick="copyUID()" style="background:var(--gold-d);border:1px solid var(--gold);color:var(--gold);border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer">📋 Copy</button>
+      </div>
     </div>
     <div class="p-quote">"${escapeHtml(u.quote)}"</div>
     <div class="card">
@@ -956,6 +960,11 @@ function showFriendView(uid, f){
 
 function closeFriendView(){
   document.getElementById('friend-view').classList.add('hidden');
+}
+
+// UID copy function
+function copyUID(){
+  navigator.clipboard.writeText(S.uid).then(() => alert('UID copied!'));
 }
 
 // Init
