@@ -28,7 +28,7 @@ let S={
   tmpUser:{},
   selAv:AVATARS[0],
   editAv:null,
-  modalSets:[],
+  modalSets:[],   // {reps, done, time: timestamp|null}
   logDate:null,
   friends:{},
 };
@@ -171,6 +171,13 @@ function suggestSets(n){
 const fmt=d=>d.toISOString().split('T')[0];
 const todayStr=()=>fmt(new Date());
 const parseD=s=>new Date(s+'T00:00:00');
+function formatTime(ts){
+  if(!ts) return '';
+  const d=new Date(ts);
+  const h=String(d.getHours()).padStart(2,'0');
+  const m=String(d.getMinutes()).padStart(2,'0');
+  return `${h}:${m}`;
+}
 
 // ─── ONBOARDING ────────────────────────────────────────────────────────────
 function initAvGrid(id,sel,onSel){
@@ -227,8 +234,14 @@ function renderHome(){
   const greet=hr<12?'Good morning':hr<17?'Good afternoon':'Good evening';
 
   let statusHTML='';
-  if(entry?.type==='workout')statusHTML=`<div class="tag tag-g">✓ Completed — ${entry.total} pull-ups</div>`;
-  else if(entry?.type==='rest')statusHTML=`<div class="tag tag-b">💤 Rest Day</div>`;
+  if(entry?.type==='workout'){
+    const timeStr=formatTime(entry.timestamp);
+    statusHTML=`<div class="tag tag-g">✓ Completed at ${timeStr} — ${entry.total} pull-ups</div>`;
+  }
+  else if(entry?.type==='rest'){
+    const timeStr=formatTime(entry.timestamp);
+    statusHTML=`<div class="tag tag-b">💤 Rest Day at ${timeStr}</div>`;
+  }
   else statusHTML=`<div class="tag tag-r">⏳ Not logged yet</div>`;
 
   let btnHTML='';
@@ -342,11 +355,20 @@ function chMo(dir){
 function openLog(dateStr){
   S.logDate=dateStr;
   const existing=S.logs[dateStr];
-  const wn=wDays().length+1;
-  const suggested=suggestSets(wn);
-  S.modalSets=existing?.type==='workout'
-    ?existing.sets.map(r=>({reps:r,done:true}))
-    :suggested.map(r=>({reps:r,done:false}));
+  if(existing?.type==='workout'){
+    const existingSets = existing.sets || [];
+    if(existingSets.length > 0 && typeof existingSets[0] === 'number'){
+      // Old format: array of numbers
+      S.modalSets = existingSets.map(r => ({reps: r, done: true, time: existing.timestamp || null}));
+    } else {
+      // New format: array of objects
+      S.modalSets = existingSets.map(s => ({reps: s.reps, done: true, time: s.time || null}));
+    }
+  } else {
+    const wn=wDays().length+1;
+    const suggested=suggestSets(wn);
+    S.modalSets = suggested.map(r => ({reps: r, done: false, time: null}));
+  }
   renderModalSets();
   showModal();
 }
@@ -370,18 +392,21 @@ function renderModalSets(){
   const dl=S.logDate===todayStr()?'Today':parseD(S.logDate).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
   const total=S.modalSets.reduce((s,x)=>s+(x.done?x.reps:0),0);
   const existing=S.logs[S.logDate];
+  const timeStr = existing?.timestamp ? formatTime(existing.timestamp) : null;
 
   document.getElementById('modal-body').innerHTML=`
     <div class="mtitle">LOG WORKOUT</div>
     <div class="msub">${dl} · Tap ✓ to check off each set</div>
+    ${timeStr ? `<div style="text-align:center;font-size:13px;color:var(--txt2);margin-bottom:14px;">🕒 Logged at ${timeStr}</div>` : ''}
     <div class="sets-wrap" id="sets-wrap">
       ${S.modalSets.map((set,i)=>`
         <div class="set-c${set.done?' done':''}" id="sc-${i}">
           <div class="set-num">S${i+1}</div>
           <div class="set-mid">
             <div class="set-rl">Reps</div>
-            <input class="set-ri" type="number" value="${set.reps}" min="1" max="999"
+            <input class="set-ri" type="number" inputmode="numeric" pattern="[0-9]*" value="${set.reps}" min="1" max="999"
               onchange="updReps(${i},this.value)" id="ri-${i}">
+            ${set.time ? `<div style="font-size:10px;color:var(--txt2);margin-top:2px;">🕒 ${formatTime(set.time)}</div>` : ''}
           </div>
           <button class="set-chk${set.done?' done':''}" onclick="togSet(${i})">${set.done?'✓':''}</button>
         </div>
@@ -396,38 +421,46 @@ function renderModalSets(){
   `;
 }
 
-function togSet(i){S.modalSets[i].done=!S.modalSets[i].done;updUI()}
-function updReps(i,v){S.modalSets[i].reps=parseInt(v)||0;updUI()}
-function addSet(){S.modalSets.push({reps:10,done:false});renderModalSets()}
-function updUI(){
-  S.modalSets.forEach((s,i)=>{
-    const c=document.getElementById('sc-'+i);
-    const b=c?.querySelector('.set-chk');
-    if(!c)return;
-    c.classList.toggle('done',s.done);
-    b.classList.toggle('done',s.done);
-    b.textContent=s.done?'✓':'';
-  });
-  const t=S.modalSets.reduce((s,x)=>s+(x.done?x.reps:0),0);
-  const el=document.getElementById('mod-tot');if(el)el.textContent=t;
+function togSet(i){
+  const s = S.modalSets[i];
+  s.done = !s.done;
+  s.time = s.done ? Date.now() : null;
+  renderModalSets();  // re-render to show time and check state
 }
 
+function updReps(i,v){
+  S.modalSets[i].reps = parseInt(v) || 0;
+  // update total without full re-render for better UX
+  const total = S.modalSets.reduce((s,x) => s + (x.done ? x.reps : 0), 0);
+  const el = document.getElementById('mod-tot');
+  if(el) el.textContent = total;
+}
+
+function addSet(){
+  S.modalSets.push({reps:10, done:false, time:null});
+  renderModalSets();
+}
+
+// Note: updUI is no longer needed; removed
+
 function saveWorkout(){
-  const done=S.modalSets.filter(s=>s.done);
-  const all=S.modalSets;
-  const sets=(done.length?done:all).map(s=>s.reps);
-  const total=sets.reduce((s,v)=>s+v,0);
-  S.logs[S.logDate]={type:'workout',sets,total};
+  const done = S.modalSets.filter(s => s.done);
+  const all = S.modalSets;
+  const setsToStore = (done.length ? done : all).map(s => ({ reps: s.reps, time: s.time || null }));
+  const total = setsToStore.reduce((sum, s) => sum + s.reps, 0);
+  S.logs[S.logDate] = { type:'workout', sets: setsToStore, total, timestamp: Date.now() };
   saveLogsToFirebase();
   hideModal();
   render(S.curPage);
 }
+
 function saveRest(ds){
-  S.logs[ds]={type:'rest',sets:[],total:0};
+  S.logs[ds] = { type:'rest', sets:[], total:0, timestamp:Date.now() };
   saveLogsToFirebase();
   render(S.curPage);
 }
-function saveRestFromModal(){saveRest(S.logDate); hideModal();}
+
+function saveRestFromModal(){ saveRest(S.logDate); hideModal(); }
 function deleteLog(){
   if(!confirm('Remove this log entry?'))return;
   delete S.logs[S.logDate];
@@ -459,7 +492,6 @@ function renderStats(){
     return`<div class="bw"><div style="font-size:9px;color:var(--txt2);margin-bottom:2px">${d.val||''}</div><div class="bar ${cls}" style="height:${h}px"></div><div class="bl">${d.label}</div></div>`;
   }).join('');
 
-  // Achievements computation
   const achList = getAchievements();
 
   let achHTML = '';
@@ -505,7 +537,6 @@ function renderStats(){
       <div style="margin-top:10px;font-size:12px;color:var(--txt2)">${p}% of ${g}-day challenge complete · ${dLeft()} days remaining</div>
     </div>
 
-    <!-- 🏆 ACHIEVEMENTS 🏆 -->
     <div class="ach-card">
       <div class="ach-title">Achievements</div>
       ${achHTML}
@@ -513,7 +544,6 @@ function renderStats(){
   `;
 }
 
-// ─── ACHIEVEMENTS LOGIC ────────────────────────────────────────────────────
 function getAchievements(){
   const tr = totalReps();
   const wd = wDays().length;
@@ -530,10 +560,10 @@ function getAchievements(){
     { icon:'⚡', name:'Iron Man', desc:'10,000 total pull-ups', max:10000, current: Math.min(tr,10000), unlocked: tr >=10000 },
     { icon:'🏋️', name:'Dedicated', desc:'Complete 10 workouts', max:10, current: Math.min(wd,10), unlocked: wd >=10 },
     { icon:'🎯', name:'Consistent', desc:'Hit daily target 5 times', max:5, current: Math.min(hitDays,5), unlocked: hitDays >=5 },
-    { icon:'🏆', name:'Challenge Champion', desc:'Complete your challenge (${goal} days)', max:goal, current: Math.min(wd,goal), unlocked: wd >= goal },
+    { icon:'🏆', name:'Challenge Champion', desc:`Complete your challenge (${goal} days)`, max:goal, current: Math.min(wd,goal), unlocked: wd >= goal },
     { icon:'🦾', name:'Heavy Lifter', desc:'Best day: 200 pull-ups', max:200, current: Math.min(bd,200), unlocked: bd >=200 },
     { icon:'🌟', name:'Halfway Hero', desc:'Reach 50% challenge completion', unlocked: wd >= goal/2 },
-    { icon:'👑', name:'IronPull Legend', desc:'Unlock all achievements', unlocked: false } // placeholder, we can compute later
+    { icon:'👑', name:'IronPull Legend', desc:'Unlock all achievements', unlocked: false }
   ];
 }
 
