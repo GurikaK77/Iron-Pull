@@ -208,7 +208,7 @@ function formatTime(ts){
   return `${h}:${m}`;
 }
 
-// ─── XP & QUESTS ──────────────────────────────────────────────────────────
+// ─── XP & QUESTS (შემცირებული XP) ────────────────────────────────────────
 function addXP(amount){
   S.user.xp = (S.user.xp || 0) + amount;
   saveUserToFirebase();
@@ -225,11 +225,11 @@ function updateQuests(){
 function generateDailyQuests(){
   const today = todayStr();
   const possible = [
-    { id: 'sets5', desc: 'Complete 5 sets today', goal: 5, reward: 50 },
-    { id: 'rep100', desc: 'Reach 100 total pull-ups today', goal: 100, reward: 100 },
-    { id: 'early', desc: 'Finish a workout before 10 AM', goal: 1, reward: 75 },
-    { id: 'streak3', desc: 'Extend your streak to 3 days', goal: 3, reward: 150 },
-    { id: 'rest', desc: 'Take a rest day', goal: 1, reward: 25 },
+    { id: 'sets5', desc: 'Complete 5 sets today', goal: 5, reward: 10 },
+    { id: 'rep100', desc: 'Reach 100 total pull-ups today', goal: 100, reward: 20 },
+    { id: 'early', desc: 'Finish a workout before 10 AM', goal: 1, reward: 15 },
+    { id: 'streak3', desc: 'Extend your streak to 3 days', goal: 3, reward: 30 },
+    { id: 'rest', desc: 'Take a rest day', goal: 1, reward: 5 },
   ];
   const shuffled = possible.sort(()=>0.5-Math.random()).slice(0,3);
   return [{ date: today, quests: shuffled.map(q=>({ ...q, progress: 0, completed: false })) }];
@@ -536,7 +536,7 @@ function saveWorkout(){
   const total = setsToStore.reduce((sum, s) => sum + s.reps, 0);
   S.logs[S.logDate] = { type:'workout', sets: setsToStore, total, timestamp: Date.now() };
   saveLogsToFirebase();
-  addXP(total);
+  addXP(Math.floor(total / 5));  // 1 XP per 5 pull-ups
   checkQuestCompletion();
   hideModal();
   render(S.curPage);
@@ -583,6 +583,7 @@ function renderStats(){
     return`<div class="bw"><div style="font-size:9px;color:var(--txt2);margin-bottom:2px">${d.val||''}</div><div class="bar ${cls}" style="height:${h}px"></div><div class="bl">${d.label}</div></div>`;
   }).join('');
 
+  // Achievements (XP scaled down)
   const achList = getAchievements();
   let achHTML = '';
   achList.forEach(a => {
@@ -624,6 +625,12 @@ function renderStats(){
   document.getElementById('page-stats').innerHTML=`
     <div class="sh">STATISTICS</div>
     <div class="ss">Full performance breakdown</div>
+    <!-- Today's Pull-Ups Hero -->
+    <div class="today-hero">
+      <div class="today-hero-n">${todayReps}</div>
+      <div class="today-hero-l">Today's Pull-Ups</div>
+    </div>
+    <!-- Total Pull-Ups Hero -->
     <div class="hero"><div class="hero-n">${tr.toLocaleString()}</div><div class="hero-l">Total Pull-Ups</div></div>
     <div class="sg">
       <div class="sgc"><div class="sgc-v">${wd.length}</div><div class="sgc-l">Workouts</div></div>
@@ -631,7 +638,6 @@ function renderStats(){
       <div class="sgc"><div class="sgc-v">${st}</div><div class="sgc-l">🔥 Streak</div></div>
       <div class="sgc"><div class="sgc-v">${bd}</div><div class="sgc-l">Best Day</div></div>
       <div class="sgc"><div class="sgc-v">${ag}</div><div class="sgc-l">Daily Avg</div></div>
-      <div class="sgc"><div class="sgc-v">${todayReps}</div><div class="sgc-l">Today's Reps</div></div>
       <div class="sgc"><div class="sgc-v">${hitRate}%</div><div class="sgc-l">Target Hit</div></div>
     </div>
     <div class="chart-box"><div class="chart-l">Last 7 Days</div><div class="bars">${bars}</div></div>
@@ -654,27 +660,32 @@ function getAchievements(){
   const goal = S.user?.goalDays||30; const target = S.user?.target||100;
   const hitDays = wDays().filter(([,v])=>v.total >= target).length;
   return [
-    { icon:'🥇', name:'First Workout', desc:'Complete 1 workout', max:1, current: wd >=1 ? 1 : 0, unlocked: wd >=1, xp: 50 },
-    { icon:'🔥', name:'7-Day Streak', desc:'Maintain a streak of 7 days', max:7, current: Math.min(st,7), unlocked: st >=7, xp: 200 },
-    { icon:'💪', name:'Pull-Up Centurion', desc:'Reach 1,000 total pull-ups', max:1000, current: Math.min(tr,1000), unlocked: tr >=1000, xp: 500 },
-    { icon:'⚡', name:'Iron Man', desc:'10,000 total pull-ups', max:10000, current: Math.min(tr,10000), unlocked: tr >=10000, xp: 2000 },
-    { icon:'🏋️', name:'Dedicated', desc:'Complete 10 workouts', max:10, current: Math.min(wd,10), unlocked: wd >=10, xp: 150 },
-    { icon:'🎯', name:'Consistent', desc:'Hit daily target 5 times', max:5, current: Math.min(hitDays,5), unlocked: hitDays >=5, xp: 250 },
-    { icon:'🏆', name:'Challenge Champion', desc:`Complete your challenge (${goal} days)`, max:goal, current: Math.min(wd,goal), unlocked: wd >= goal, xp: 1000 },
-    { icon:'🦾', name:'Heavy Lifter', desc:'Best day: 200 pull-ups', max:200, current: Math.min(bd,200), unlocked: bd >=200, xp: 300 },
-    { icon:'🌟', name:'Halfway Hero', desc:'Reach 50% challenge completion', unlocked: wd >= goal/2, xp: 200 },
-    { icon:'👑', name:'IronPull Legend', desc:'Unlock all achievements', unlocked: false, xp: 5000 }
+    { icon:'🥇', name:'First Workout', desc:'Complete 1 workout', max:1, current: wd >=1 ? 1 : 0, unlocked: wd >=1, xp: 10 },
+    { icon:'🔥', name:'7-Day Streak', desc:'Maintain a streak of 7 days', max:7, current: Math.min(st,7), unlocked: st >=7, xp: 40 },
+    { icon:'💪', name:'Pull-Up Centurion', desc:'Reach 1,000 total pull-ups', max:1000, current: Math.min(tr,1000), unlocked: tr >=1000, xp: 100 },
+    { icon:'⚡', name:'Iron Man', desc:'10,000 total pull-ups', max:10000, current: Math.min(tr,10000), unlocked: tr >=10000, xp: 400 },
+    { icon:'🏋️', name:'Dedicated', desc:'Complete 10 workouts', max:10, current: Math.min(wd,10), unlocked: wd >=10, xp: 30 },
+    { icon:'🎯', name:'Consistent', desc:'Hit daily target 5 times', max:5, current: Math.min(hitDays,5), unlocked: hitDays >=5, xp: 50 },
+    { icon:'🏆', name:'Challenge Champion', desc:`Complete your challenge (${goal} days)`, max:goal, current: Math.min(wd,goal), unlocked: wd >= goal, xp: 200 },
+    { icon:'🦾', name:'Heavy Lifter', desc:'Best day: 200 pull-ups', max:200, current: Math.min(bd,200), unlocked: bd >=200, xp: 60 },
+    { icon:'🌟', name:'Halfway Hero', desc:'Reach 50% challenge completion', unlocked: wd >= goal/2, xp: 40 },
+    { icon:'👑', name:'IronPull Legend', desc:'Unlock all achievements', unlocked: false, xp: 1000 }
   ];
 }
 
-// ─── PROFILE ────────────────────────────────────────────────────────────────
+// ─── PROFILE (Shop-ის ღილაკით) ──────────────────────────────────────────
 function renderProf(){
   const u=S.user;
   const av = u.avatarImg ? `<img src="${u.avatarImg}">` : u.avatar;
   S.editMode = S.editMode || false;
 
   document.getElementById('page-prof').innerHTML = `
-    <div class="sh">PROFILE</div>
+    <div style="position:relative;">
+      <div class="sh">PROFILE</div>
+      <button class="prof-shop-btn" onclick="go('shop')">
+        🛒 Shop <span style="font-size:12px;">⭐ ${u.xp}</span>
+      </button>
+    </div>
     <div class="prof-top">
       <div class="p-av" onclick="document.getElementById('avatar-upload').click()">${av}<div class="p-av-ovr">CHANGE</div></div>
       <div id="profile-view" style="${S.editMode ? 'display:none' : ''}">
@@ -828,6 +839,9 @@ function showFriendView(uid, f){
     return n;
   })();
   const p = f.goalDays ? Math.min(100, Math.round(w.length/f.goalDays*100)) : 0;
+  const todayLog = logs[todayStr()];
+  const todayReps = todayLog?.type==='workout' ? todayLog.total : 0;
+  const xp = f.xp || 0;
 
   const av = f.avatarImg ? `<img src="${f.avatarImg}" style="width:60px;height:60px;border-radius:50%;object-fit:cover">` : f.avatar;
 
@@ -842,7 +856,14 @@ function showFriendView(uid, f){
       <div style="font-size:60px">${av}</div>
       <div class="p-name">${escapeHtml(f.name.toUpperCase())}</div>
       <div class="p-age">Age ${f.age} · ${f.goalDays}-day challenge</div>
+      <div class="xp-badge">⭐ ${xp} XP</div>
     </div>
+    <!-- Today's Pull-Ups Hero -->
+    <div class="today-hero">
+      <div class="today-hero-n">${todayReps}</div>
+      <div class="today-hero-l">Today's Pull-Ups</div>
+    </div>
+    <!-- Total Pull-Ups Hero -->
     <div class="hero"><div class="hero-n">${total.toLocaleString()}</div><div class="hero-l">Total Pull-Ups</div></div>
     <div class="sg">
       <div class="sgc"><div class="sgc-v">${w.length}</div><div class="sgc-l">Workouts</div></div>

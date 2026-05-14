@@ -21,7 +21,7 @@ html,body{background:var(--bg);color:var(--txt);font-family:'DM Sans',sans-serif
 .nav{
   position:fixed;bottom:0;left:0;right:0;height:var(--nav);
   background:var(--s1);border-top:1px solid var(--border);
-  display:flex;align-items:center;justify-content:space-around;
+  display:flex;align-items:center;justify-content:space-evenly;
   padding:0 4px;padding-bottom:env(safe-area-inset-bottom,0px);z-index:100
 }
 .nb{display:flex;flex-direction:column;align-items:center;gap:3px;
@@ -156,6 +156,29 @@ textarea.fi{resize:none;line-height:1.5}
 .hero{background:linear-gradient(135deg,var(--s2),var(--s3));border:1px solid var(--border);border-radius:var(--r2);padding:28px;text-align:center;margin-bottom:14px}
 .hero-n{font-family:'Bebas Neue',sans-serif;font-size:72px;color:var(--gold);line-height:1}
 .hero-l{font-size:11px;color:var(--txt2);text-transform:uppercase;letter-spacing:1px;margin-top:4px}
+/* Today's pull-ups hero card */
+.today-hero{
+  background: linear-gradient(135deg, var(--s2), var(--s3));
+  border: 1px solid var(--gold);
+  border-radius: var(--r2);
+  padding: 28px;
+  text-align: center;
+  margin-bottom: 14px;
+}
+.today-hero-n{
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 64px;
+  color: var(--gold);
+  line-height: 1;
+}
+.today-hero-l{
+  font-size: 12px;
+  color: var(--txt2);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-top: 4px;
+}
+
 .sg{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
 .sgc{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:16px}
 .sgc-v{font-family:'Bebas Neue',sans-serif;font-size:36px;color:var(--txt)}
@@ -213,3 +236,27 @@ textarea.fi{resize:none;line-height:1.5}
 .quest-reward{font-weight:600;color:var(--gold)}
 
 .shop-soon{text-align:center;padding:40px 20px;color:var(--txt2);font-size:18px}
+
+/* Shop-ის ღილაკი Profile-ზე */
+.prof-shop-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: var(--gold-d);
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.2s, transform 0.1s;
+  z-index: 5;
+}
+.prof-shop-btn:active {
+  transform: scale(0.94);
+  background: rgba(200,168,75,.25);
+}
