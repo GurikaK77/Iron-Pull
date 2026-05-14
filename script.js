@@ -21,7 +21,7 @@ const MONTHS=['January','February','March','April','May','June','July','August',
 // ─── STATE ──────────────────────────────────────────────────────────────────
 let S={
   uid:null,
-  user:null,
+  user:null,        // {name,age,goalDays,target,quote,avatar,avatarImg,xp,...}
   logs:{},
   cal:{y:0,m:0},
   curPage:'home',
@@ -31,12 +31,15 @@ let S={
   modalSets:[],   // {reps, done, time: timestamp|null}
   logDate:null,
   friends:{},
+  quests:[],
+  editMode: false,
 };
 
 // ─── FIREBASE REFS ─────────────────────────────────────────────────────────
 function userRef(){ return db.ref('users/' + S.uid); }
 function logsRef(){ return db.ref('users/' + S.uid + '/logs'); }
 function friendsRef(){ return db.ref('users/' + S.uid + '/friends'); }
+function questsRef(){ return db.ref('users/' + S.uid + '/quests'); }
 
 function syncFromFirebase(){
   if(!S.uid) return;
@@ -46,8 +49,13 @@ function syncFromFirebase(){
       S.user = val;
       S.logs = val.logs || {};
       S.friends = val.friends || {};
-      render(S.curPage);
-      document.getElementById('ob').classList.add('hidden');
+      S.user.xp = S.user.xp || 0;
+      questsRef().once('value', qSnap => {
+        S.quests = qSnap.val() || [];
+        updateQuests();
+        render(S.curPage);
+        document.getElementById('ob').classList.add('hidden');
+      });
     } else {
       document.getElementById('ob').classList.remove('hidden');
     }
@@ -65,6 +73,7 @@ function saveUserToFirebase(){
     avatar: S.user.avatar,
     avatarImg: S.user.avatarImg || null,
     startDate: S.user.startDate,
+    xp: S.user.xp,
     logs: S.logs,
     friends: S.friends
   });
@@ -115,6 +124,25 @@ function signOut(){
   auth.signOut();
 }
 
+// ─── CLICK SOUND ───────────────────────────────────────────────────────────
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playClick(){
+  if(audioCtx.state === 'suspended') audioCtx.resume();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.frequency.value = 800;
+  osc.type = 'sine';
+  gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+  osc.start(audioCtx.currentTime);
+  osc.stop(audioCtx.currentTime + 0.1);
+}
+document.addEventListener('click', function(e){
+  if(e.target.closest('button, .btn')) playClick();
+});
+
 // ─── ROUTER ─────────────────────────────────────────────────────────────────
 function go(page){
   if(!S.uid) return;
@@ -139,6 +167,7 @@ function render(p){
   else if(p==='stats') renderStats();
   else if(p==='prof') renderProf();
   else if(p==='friends') renderFriends();
+  else if(p==='shop') renderShop();
 }
 
 // ─── COMPUTED ──────────────────────────────────────────────────────────────
@@ -179,6 +208,67 @@ function formatTime(ts){
   return `${h}:${m}`;
 }
 
+// ─── XP & QUESTS ──────────────────────────────────────────────────────────
+function addXP(amount){
+  S.user.xp = (S.user.xp || 0) + amount;
+  saveUserToFirebase();
+}
+
+function updateQuests(){
+  const today = todayStr();
+  if(!S.quests.length || S.quests[0].date !== today){
+    S.quests = generateDailyQuests();
+    questsRef().set(S.quests);
+  }
+}
+
+function generateDailyQuests(){
+  const today = todayStr();
+  const possible = [
+    { id: 'sets5', desc: 'Complete 5 sets today', goal: 5, reward: 50 },
+    { id: 'rep100', desc: 'Reach 100 total pull-ups today', goal: 100, reward: 100 },
+    { id: 'early', desc: 'Finish a workout before 10 AM', goal: 1, reward: 75 },
+    { id: 'streak3', desc: 'Extend your streak to 3 days', goal: 3, reward: 150 },
+    { id: 'rest', desc: 'Take a rest day', goal: 1, reward: 25 },
+  ];
+  const shuffled = possible.sort(()=>0.5-Math.random()).slice(0,3);
+  return [{ date: today, quests: shuffled.map(q=>({ ...q, progress: 0, completed: false })) }];
+}
+
+function checkQuestCompletion(){
+  const today = todayStr();
+  if(!S.quests.length || S.quests[0].date !== today) return;
+  const quests = S.quests[0].quests;
+  let changed = false;
+  quests.forEach(q => {
+    if(q.completed) return;
+    let progress = 0;
+    const entry = S.logs[today];
+    if(q.id === 'sets5'){
+      progress = entry?.type==='workout' ? entry.sets.length : 0;
+    } else if(q.id === 'rep100'){
+      progress = entry?.type==='workout' ? entry.total : 0;
+    } else if(q.id === 'early'){
+      if(entry?.type==='workout' && entry.timestamp){
+        const h = new Date(entry.timestamp).getHours();
+        if(h < 10) progress = 1;
+      }
+    } else if(q.id === 'streak3'){
+      const st = streak();
+      progress = Math.min(st, q.goal);
+    } else if(q.id === 'rest'){
+      if(entry?.type === 'rest') progress = 1;
+    }
+    q.progress = progress;
+    if(progress >= q.goal){
+      q.completed = true;
+      addXP(q.reward);
+      changed = true;
+    }
+  });
+  if(changed) questsRef().set(S.quests);
+}
+
 // ─── ONBOARDING ────────────────────────────────────────────────────────────
 function initAvGrid(id,sel,onSel){
   const g=document.getElementById(id);
@@ -217,7 +307,7 @@ function obBack(toStep){
   obDots(toStep);
 }
 function obFinish(){
-  S.user={...S.tmpUser,avatar:S.selAv,avatarImg:null,startDate:todayStr()};
+  S.user={...S.tmpUser,avatar:S.selAv,avatarImg:null,startDate:todayStr(),xp:0};
   S.friends = {};
   saveUserToFirebase();
   document.getElementById('ob').classList.add('hidden');
@@ -258,7 +348,8 @@ function renderHome(){
     <div class="home-top">
       <div>
         <div class="home-greet">${greet},</div>
-        <div class="home-name">${u.name} ${av}</div>
+        <div class="home-name">${escapeHtml(u.name)} ${av}</div>
+        <div class="xp-badge">⭐ ${u.xp} XP</div>
       </div>
       <div class="streak-pill">🔥 ${st} day${st!==1?'s':''}</div>
     </div>
@@ -289,7 +380,7 @@ function renderHome(){
     </div>
     <div class="card">
       <div class="card-title">Your Motivation</div>
-      <div style="font-style:italic;color:var(--txt2);line-height:1.6;font-size:14px">"${u.quote}"</div>
+      <div style="font-style:italic;color:var(--txt2);line-height:1.6;font-size:14px">"${escapeHtml(u.quote)}"</div>
     </div>
   `;
 }
@@ -358,10 +449,8 @@ function openLog(dateStr){
   if(existing?.type==='workout'){
     const existingSets = existing.sets || [];
     if(existingSets.length > 0 && typeof existingSets[0] === 'number'){
-      // Old format: array of numbers
       S.modalSets = existingSets.map(r => ({reps: r, done: true, time: existing.timestamp || null}));
     } else {
-      // New format: array of objects
       S.modalSets = existingSets.map(s => ({reps: s.reps, done: true, time: s.time || null}));
     }
   } else {
@@ -425,12 +514,11 @@ function togSet(i){
   const s = S.modalSets[i];
   s.done = !s.done;
   s.time = s.done ? Date.now() : null;
-  renderModalSets();  // re-render to show time and check state
+  renderModalSets();
 }
 
 function updReps(i,v){
   S.modalSets[i].reps = parseInt(v) || 0;
-  // update total without full re-render for better UX
   const total = S.modalSets.reduce((s,x) => s + (x.done ? x.reps : 0), 0);
   const el = document.getElementById('mod-tot');
   if(el) el.textContent = total;
@@ -441,8 +529,6 @@ function addSet(){
   renderModalSets();
 }
 
-// Note: updUI is no longer needed; removed
-
 function saveWorkout(){
   const done = S.modalSets.filter(s => s.done);
   const all = S.modalSets;
@@ -450,6 +536,8 @@ function saveWorkout(){
   const total = setsToStore.reduce((sum, s) => sum + s.reps, 0);
   S.logs[S.logDate] = { type:'workout', sets: setsToStore, total, timestamp: Date.now() };
   saveLogsToFirebase();
+  addXP(total);
+  checkQuestCompletion();
   hideModal();
   render(S.curPage);
 }
@@ -461,6 +549,7 @@ function saveRest(ds){
 }
 
 function saveRestFromModal(){ saveRest(S.logDate); hideModal(); }
+
 function deleteLog(){
   if(!confirm('Remove this log entry?'))return;
   delete S.logs[S.logDate];
@@ -476,6 +565,8 @@ document.getElementById('modal-overlay').addEventListener('click',function(e){if
 // ─── STATS ──────────────────────────────────────────────────────────────────
 function renderStats(){
   const tr=totalReps(),wd=wDays(),rd=rDays(),st=streak(),bd=bestDay(),ag=avgDay();
+  const todayLog = S.logs[todayStr()];
+  const todayReps = todayLog?.type==='workout' ? todayLog.total : 0;
   const g=S.user?.goalDays||30,t=S.user?.target||100;
   const hitRate=wd.length?Math.round(wd.filter(([,v])=>v.total>=t).length/wd.length*100):0;
   const p=pct();
@@ -493,7 +584,6 @@ function renderStats(){
   }).join('');
 
   const achList = getAchievements();
-
   let achHTML = '';
   achList.forEach(a => {
     const locked = !a.unlocked;
@@ -503,7 +593,7 @@ function renderStats(){
         <div class="ach-icon">${a.icon}</div>
         <div class="ach-info">
           <div class="ach-name">${a.name}</div>
-          <div class="ach-desc">${a.desc}</div>
+          <div class="ach-desc">${a.desc} (${a.xp || 0} XP)</div>
           ${a.max ? `
           <div class="ach-prog">
             <div class="ach-prog-bar">
@@ -517,6 +607,20 @@ function renderStats(){
     `;
   });
 
+  const questsToday = S.quests.length && S.quests[0].date === todayStr() ? S.quests[0].quests : [];
+  let questHTML = questsToday.length ? `
+    <div class="ach-card">
+      <div class="ach-title">Daily Quests</div>
+      ${questsToday.map(q => `
+        <div class="quest-card" style="opacity:${q.completed?0.5:1}">
+          <div>${q.completed?'✅':'⬜'}</div>
+          <div class="quest-progress">${q.desc} (${q.progress}/${q.goal})</div>
+          <div class="quest-reward">+${q.reward} XP</div>
+        </div>
+      `).join('')}
+    </div>
+  ` : '';
+
   document.getElementById('page-stats').innerHTML=`
     <div class="sh">STATISTICS</div>
     <div class="ss">Full performance breakdown</div>
@@ -527,6 +631,7 @@ function renderStats(){
       <div class="sgc"><div class="sgc-v">${st}</div><div class="sgc-l">🔥 Streak</div></div>
       <div class="sgc"><div class="sgc-v">${bd}</div><div class="sgc-l">Best Day</div></div>
       <div class="sgc"><div class="sgc-v">${ag}</div><div class="sgc-l">Daily Avg</div></div>
+      <div class="sgc"><div class="sgc-v">${todayReps}</div><div class="sgc-l">Today's Reps</div></div>
       <div class="sgc"><div class="sgc-v">${hitRate}%</div><div class="sgc-l">Target Hit</div></div>
     </div>
     <div class="chart-box"><div class="chart-l">Last 7 Days</div><div class="bars">${bars}</div></div>
@@ -536,7 +641,7 @@ function renderStats(){
       <div class="prog-wrap"><div class="prog-fill" style="width:${p}%"></div></div>
       <div style="margin-top:10px;font-size:12px;color:var(--txt2)">${p}% of ${g}-day challenge complete · ${dLeft()} days remaining</div>
     </div>
-
+    ${questHTML}
     <div class="ach-card">
       <div class="ach-title">Achievements</div>
       ${achHTML}
@@ -545,89 +650,106 @@ function renderStats(){
 }
 
 function getAchievements(){
-  const tr = totalReps();
-  const wd = wDays().length;
-  const st = streak();
-  const bd = bestDay();
-  const goal = S.user?.goalDays || 30;
-  const target = S.user?.target || 100;
+  const tr = totalReps(); const wd = wDays().length; const st = streak(); const bd = bestDay();
+  const goal = S.user?.goalDays||30; const target = S.user?.target||100;
   const hitDays = wDays().filter(([,v])=>v.total >= target).length;
-
   return [
-    { icon:'🥇', name:'First Workout', desc:'Complete 1 workout', max:1, current: wd >=1 ? 1 : 0, unlocked: wd >=1 },
-    { icon:'🔥', name:'7-Day Streak', desc:'Maintain a streak of 7 days', max:7, current: Math.min(st,7), unlocked: st >=7 },
-    { icon:'💪', name:'Pull-Up Centurion', desc:'Reach 1,000 total pull-ups', max:1000, current: Math.min(tr,1000), unlocked: tr >=1000 },
-    { icon:'⚡', name:'Iron Man', desc:'10,000 total pull-ups', max:10000, current: Math.min(tr,10000), unlocked: tr >=10000 },
-    { icon:'🏋️', name:'Dedicated', desc:'Complete 10 workouts', max:10, current: Math.min(wd,10), unlocked: wd >=10 },
-    { icon:'🎯', name:'Consistent', desc:'Hit daily target 5 times', max:5, current: Math.min(hitDays,5), unlocked: hitDays >=5 },
-    { icon:'🏆', name:'Challenge Champion', desc:`Complete your challenge (${goal} days)`, max:goal, current: Math.min(wd,goal), unlocked: wd >= goal },
-    { icon:'🦾', name:'Heavy Lifter', desc:'Best day: 200 pull-ups', max:200, current: Math.min(bd,200), unlocked: bd >=200 },
-    { icon:'🌟', name:'Halfway Hero', desc:'Reach 50% challenge completion', unlocked: wd >= goal/2 },
-    { icon:'👑', name:'IronPull Legend', desc:'Unlock all achievements', unlocked: false }
+    { icon:'🥇', name:'First Workout', desc:'Complete 1 workout', max:1, current: wd >=1 ? 1 : 0, unlocked: wd >=1, xp: 50 },
+    { icon:'🔥', name:'7-Day Streak', desc:'Maintain a streak of 7 days', max:7, current: Math.min(st,7), unlocked: st >=7, xp: 200 },
+    { icon:'💪', name:'Pull-Up Centurion', desc:'Reach 1,000 total pull-ups', max:1000, current: Math.min(tr,1000), unlocked: tr >=1000, xp: 500 },
+    { icon:'⚡', name:'Iron Man', desc:'10,000 total pull-ups', max:10000, current: Math.min(tr,10000), unlocked: tr >=10000, xp: 2000 },
+    { icon:'🏋️', name:'Dedicated', desc:'Complete 10 workouts', max:10, current: Math.min(wd,10), unlocked: wd >=10, xp: 150 },
+    { icon:'🎯', name:'Consistent', desc:'Hit daily target 5 times', max:5, current: Math.min(hitDays,5), unlocked: hitDays >=5, xp: 250 },
+    { icon:'🏆', name:'Challenge Champion', desc:`Complete your challenge (${goal} days)`, max:goal, current: Math.min(wd,goal), unlocked: wd >= goal, xp: 1000 },
+    { icon:'🦾', name:'Heavy Lifter', desc:'Best day: 200 pull-ups', max:200, current: Math.min(bd,200), unlocked: bd >=200, xp: 300 },
+    { icon:'🌟', name:'Halfway Hero', desc:'Reach 50% challenge completion', unlocked: wd >= goal/2, xp: 200 },
+    { icon:'👑', name:'IronPull Legend', desc:'Unlock all achievements', unlocked: false, xp: 5000 }
   ];
 }
 
 // ─── PROFILE ────────────────────────────────────────────────────────────────
 function renderProf(){
   const u=S.user;
-  const av=u.avatarImg?`<img src="${u.avatarImg}">`:u.avatar;
+  const av = u.avatarImg ? `<img src="${u.avatarImg}">` : u.avatar;
+  S.editMode = S.editMode || false;
 
-  document.getElementById('page-prof').innerHTML=`
+  document.getElementById('page-prof').innerHTML = `
     <div class="sh">PROFILE</div>
     <div class="prof-top">
       <div class="p-av" onclick="document.getElementById('avatar-upload').click()">${av}<div class="p-av-ovr">CHANGE</div></div>
-      <div class="p-name">${escapeHtml(u.name.toUpperCase())}</div>
-      <div class="p-age">Age ${u.age} · ${u.goalDays}-day challenge</div>
-      <div style="margin-top:8px;display:flex;align-items:center;gap:6px;justify-content:center">
-        <span style="font-size:11px;color:var(--txt2);background:var(--s2);padding:4px 12px;border-radius:12px;font-family:'DM Mono',monospace;letter-spacing:0.5px;">UID: ${S.uid}</span>
-        <button onclick="copyUID()" style="background:var(--gold-d);border:1px solid var(--gold);color:var(--gold);border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer">📋 Copy</button>
+      <div id="profile-view" style="${S.editMode ? 'display:none' : ''}">
+        <div class="p-name">${escapeHtml(u.name.toUpperCase())}</div>
+        <div class="p-age">Age ${u.age} · ${u.goalDays}-day challenge</div>
+        <div class="p-quote">"${escapeHtml(u.quote)}"</div>
+        <div class="xp-badge" style="margin-top:10px;">⭐ ${u.xp} XP</div>
+        <div style="margin-top:14px;">
+          <span style="font-size:11px;color:var(--txt2);background:var(--s2);padding:4px 12px;border-radius:12px;">UID: ${S.uid}</span>
+          <button onclick="copyUID()" style="background:var(--gold-d);border:1px solid var(--gold);color:var(--gold);border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer">📋 Copy</button>
+        </div>
+        <button class="btn btn-gold" style="margin-top:20px;" onclick="toggleEdit(true)">✏️ Edit Profile</button>
       </div>
-    </div>
-    <div class="p-quote">"${escapeHtml(u.quote)}"</div>
-    <div class="card">
-      <div class="card-title">Edit Profile</div>
-      <div class="fg"><label class="fl">Name</label><input class="fi" id="e-name" value="${escapeHtml(u.name)}" maxlength="20"></div>
-      <div class="fg"><label class="fl">Age</label><input class="fi" id="e-age" type="number" value="${u.age}" min="10" max="99"></div>
-      <div class="fg"><label class="fl">Goal Days</label><input class="fi" id="e-days" type="number" value="${u.goalDays}" min="7" max="365"></div>
-      <div class="fg"><label class="fl">Daily Target</label><input class="fi" id="e-target" type="number" value="${u.target||100}" min="10"></div>
-      <div class="fg"><label class="fl">Quote</label><input class="fi" id="e-quote" value="${escapeHtml(u.quote)}" maxlength="90"></div>
-      <div class="fg"><label class="fl">Avatar Emoji</label><div class="av-grid" id="edit-av-grid"></div></div>
-      <button class="btn btn-gold" id="save-btn" onclick="saveProf()">Save Changes</button>
+      <div id="profile-edit" style="${S.editMode ? '' : 'display:none'}">
+        <div class="card">
+          <div class="card-title">Edit Profile</div>
+          <div class="fg"><label class="fl">Name</label><input class="fi" id="e-name" value="${escapeHtml(u.name)}" maxlength="20"></div>
+          <div class="fg"><label class="fl">Age</label><input class="fi" id="e-age" type="number" value="${u.age}" min="10" max="99"></div>
+          <div class="fg"><label class="fl">Goal Days</label><input class="fi" id="e-days" type="number" value="${u.goalDays}" min="7" max="365"></div>
+          <div class="fg"><label class="fl">Daily Target</label><input class="fi" id="e-target" type="number" value="${u.target||100}" min="10"></div>
+          <div class="fg"><label class="fl">Quote</label><input class="fi" id="e-quote" value="${escapeHtml(u.quote)}" maxlength="90"></div>
+          <div class="fg"><label class="fl">Avatar Emoji</label><div class="av-grid" id="edit-av-grid"></div></div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn btn-gold" id="save-btn" onclick="saveProf()">Save Changes</button>
+            <button class="btn btn-dark" onclick="toggleEdit(false)">Cancel</button>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="divider"></div>
     <button class="btn btn-red" onclick="signOut()">🚪 Sign Out</button>
     <div style="height:10px"></div>
   `;
-  initAvGrid('edit-av-grid', u.avatar, 'selEditAv');
-  S.editAv=null;
+  if(S.editMode){
+    initAvGrid('edit-av-grid', u.avatar, 'selEditAv');
+    S.editAv = null;
+  }
 }
 
-function escapeHtml(str){
-  return str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[m]);
+function toggleEdit(mode){
+  S.editMode = mode;
+  render('prof');
 }
 
 function saveProf(){
-  const name=document.getElementById('e-name').value.trim();
-  if(!name){alert('Name cannot be empty.');return}
-  S.user={...S.user, name,
-    age:parseInt(document.getElementById('e-age').value)||S.user.age,
-    goalDays:parseInt(document.getElementById('e-days').value)||S.user.goalDays,
-    target:parseInt(document.getElementById('e-target').value)||S.user.target,
-    quote:document.getElementById('e-quote').value.trim()||S.user.quote,
-    avatar:S.editAv||S.user.avatar,
-  };
+  const name = document.getElementById('e-name').value.trim();
+  if(!name){ alert('Name cannot be empty.'); return; }
+  S.user.name = name;
+  S.user.age = parseInt(document.getElementById('e-age').value)||S.user.age;
+  S.user.goalDays = parseInt(document.getElementById('e-days').value)||S.user.goalDays;
+  S.user.target = parseInt(document.getElementById('e-target').value)||S.user.target;
+  S.user.quote = document.getElementById('e-quote').value.trim()||S.user.quote;
+  if(S.editAv) S.user.avatar = S.editAv;
   saveUserToFirebase();
-  const btn=document.getElementById('save-btn');
-  if(btn){btn.textContent='✓ Saved!';btn.style.background='var(--grn)';btn.style.color='#000';
-    setTimeout(()=>{btn.textContent='Save Changes';btn.style.background='';btn.style.color=''},2000)}
-  renderProf();
+  const btn = document.getElementById('save-btn');
+  btn.classList.add('btn-saved');
+  btn.innerHTML = '✓ Saved!';
+  setTimeout(() => {
+    toggleEdit(false);
+  }, 1500);
+}
+
+function copyUID(){
+  navigator.clipboard.writeText(S.uid).then(() => alert('UID copied!'));
 }
 
 function handleAvatarUpload(input){
-  const file=input.files[0];if(!file)return;
-  const r=new FileReader();
-  r.onload=e=>{S.user.avatarImg=e.target.result;saveUserToFirebase();renderProf()};
-  r.readAsDataURL(file);
+  const file = input.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    S.user.avatarImg = e.target.result;
+    saveUserToFirebase();
+    render('prof');
+  };
+  reader.readAsDataURL(file);
 }
 
 // ─── FRIENDS ───────────────────────────────────────────────────────────────
@@ -739,9 +861,13 @@ function closeFriendView(){
   document.getElementById('friend-view').classList.add('hidden');
 }
 
-// ─── UID COPY ──────────────────────────────────────────────────────────────
-function copyUID(){
-  navigator.clipboard.writeText(S.uid).then(() => alert('UID copied!'));
+// ─── SHOP ──────────────────────────────────────────────────────────────────
+function renderShop(){
+  document.getElementById('page-shop').innerHTML = `
+    <div class="sh">SHOP</div>
+    <div class="xp-badge" style="font-size:18px; margin-bottom:20px;">⭐ ${S.user.xp} XP</div>
+    <div class="shop-soon">🛍️ Items coming soon!<br><span style="font-size:14px;">Earn XP by working out, completing quests & achievements.</span></div>
+  `;
 }
 
 // ─── APP ICON GENERATION (PWA) ────────────────────────────────────────────
@@ -773,6 +899,11 @@ function copyUID(){
   const ml=document.createElement('link');ml.rel='manifest';ml.href=URL.createObjectURL(blob);
   document.head.appendChild(ml);
 })();
+
+// ─── HELPERS ───────────────────────────────────────────────────────────────
+function escapeHtml(str){
+  return str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[m]);
+}
 
 // ─── INIT ──────────────────────────────────────────────────────────────────
 initAvGrid('av-grid', S.selAv, 'selAv');
