@@ -18,21 +18,41 @@ const AVATARS=['💪','🦾','🏋️','⚡','🔥','🎯','🏆','👊','🦁',
 const DAYS_SHORT=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 
+// ─── SHOP ITEMS ────────────────────────────────────────────────────────────
+const SHOP_ITEMS = [
+  { id:'theme-ocean', name:'Ocean Breeze', desc:'Cool blue tones', price:200, type:'theme', data:{ '--bg':'#0b1a2a','--bg2':'#0e2540','--gold':'#4a9eff','--gold2':'#6cb4ff','--border':'#1e3a5f','--s1':'#0f2d4a','--s2':'#143556' } },
+  { id:'theme-sunset', name:'Sunset Glow', desc:'Warm orange/pink', price:250, type:'theme', data:{ '--bg':'#1a0e0b','--bg2':'#2d140f','--gold':'#ff8c42','--gold2':'#ffaa5e','--border':'#5f2a1e','--s1':'#2d1a12','--s2':'#3f2218' } },
+  { id:'theme-forest', name:'Deep Forest', desc:'Natural greens', price:200, type:'theme', data:{ '--bg':'#0d1e0d','--bg2':'#142814','--gold':'#4caf50','--gold2':'#81c784','--border':'#1e4a1e','--s1':'#1a331a','--s2':'#224422' } },
+  { id:'theme-neon', name:'Neon Nights', desc:'Cyberpunk glow', price:400, type:'theme', data:{ '--bg':'#0f0f1a','--bg2':'#1a1a2e','--gold':'#ff007f','--gold2':'#ff6ec7','--border':'#7a0035','--s1':'#1a1a2e','--s2':'#2a2a4e' } },
+  { id:'theme-royal', name:'Royal Purple', desc:'Luxury purple & gold', price:350, type:'theme', data:{ '--bg':'#1a0e1a','--bg2':'#2d142d','--gold':'#d4af37','--gold2':'#e5c158','--border':'#5f1e5f','--s1':'#2d142d','--s2':'#3f1e3f' } },
+  { id:'theme-mystic', name:'Mystic Void', desc:'Another dimension', price:600, type:'theme', data:{ '--bg':'#0a0a1a','--bg2':'#12122a','--gold':'#9b59b6','--gold2':'#c39bd3','--border':'#3d1a6e','--s1':'#16162e','--s2':'#1e1e3e' } },
+  { id:'title-iron', name:'Iron Warrior', desc:'Title: Iron Warrior', price:100, type:'title', data:'🦾 Iron Warrior' },
+  { id:'title-beast', name:'Beast Mode', desc:'Title: Beast Mode', price:150, type:'title', data:'🔥 Beast Mode' },
+  { id:'title-legend', name:'Living Legend', desc:'Title: Living Legend', price:250, type:'title', data:'👑 Living Legend' },
+  { id:'title-mythic', name:'Mythic Puller', desc:'Title: Mythic Puller', price:500, type:'title', data:'⚡ Mythic Puller' },
+];
+
 // ─── STATE ──────────────────────────────────────────────────────────────────
 let S={
   uid:null,
-  user:null,        // {name,age,goalDays,target,quote,avatar,avatarImg,xp,...}
+  user:null,
   logs:{},
   cal:{y:0,m:0},
   curPage:'home',
   tmpUser:{},
   selAv:AVATARS[0],
   editAv:null,
-  modalSets:[],   // {reps, done, time: timestamp|null}
+  modalSets:[],
   logDate:null,
   friends:{},
   quests:[],
   editMode: false,
+  adminTargetUser:null,
+  inventory:[],
+  equippedTheme:null,
+  equippedTitle:null,
+  status:'',
+  unlockedAchievements: new Set(),
 };
 
 // ─── FIREBASE REFS ─────────────────────────────────────────────────────────
@@ -50,6 +70,12 @@ function syncFromFirebase(){
       S.logs = val.logs || {};
       S.friends = val.friends || {};
       S.user.xp = S.user.xp || 0;
+      S.inventory = val.inventory || [];
+      S.equippedTheme = val.equippedTheme || null;
+      S.equippedTitle = val.equippedTitle || null;
+      S.status = val.status || '';
+      S.unlockedAchievements = new Set(val.unlockedAchievements || []);
+      applyEquippedTheme();
       questsRef().once('value', qSnap => {
         S.quests = qSnap.val() || [];
         updateQuests();
@@ -74,6 +100,12 @@ function saveUserToFirebase(){
     avatarImg: S.user.avatarImg || null,
     startDate: S.user.startDate,
     xp: S.user.xp,
+    role: S.user.role || null,
+    inventory: S.inventory,
+    equippedTheme: S.equippedTheme,
+    equippedTitle: S.equippedTitle,
+    status: S.status,
+    unlockedAchievements: Array.from(S.unlockedAchievements),
     logs: S.logs,
     friends: S.friends
   });
@@ -98,31 +130,23 @@ auth.onAuthStateChanged(user => {
   }
 });
 
-function authGoogleSignIn(){
-  auth.signInWithPopup(googleProvider).catch(e => alert(e.message));
-}
-
+function authGoogleSignIn(){ auth.signInWithPopup(googleProvider).catch(e => alert(e.message)); }
 function authSignIn(){
   const email = document.getElementById('auth-email').value;
   const pass = document.getElementById('auth-pass').value;
   auth.signInWithEmailAndPassword(email, pass).catch(e => alert(e.message));
 }
-
 function authRegister(){
   const email = document.getElementById('auth-email').value;
   const pass = document.getElementById('auth-pass').value;
   auth.createUserWithEmailAndPassword(email, pass).catch(e => alert(e.message));
 }
-
 function resetPassword(){
   const email = document.getElementById('auth-email').value;
   if(!email) return alert('Enter email first');
   auth.sendPasswordResetEmail(email).then(() => alert('Reset email sent!'));
 }
-
-function signOut(){
-  auth.signOut();
-}
+function signOut(){ auth.signOut(); }
 
 // ─── CLICK SOUND ───────────────────────────────────────────────────────────
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -130,14 +154,11 @@ function playClick(){
   if(audioCtx.state === 'suspended') audioCtx.resume();
   const osc = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-  osc.frequency.value = 800;
-  osc.type = 'sine';
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.frequency.value = 800; osc.type = 'sine';
   gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
   gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
-  osc.start(audioCtx.currentTime);
-  osc.stop(audioCtx.currentTime + 0.1);
+  osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 0.1);
 }
 document.addEventListener('click', function(e){
   if(e.target.closest('button, .btn')) playClick();
@@ -208,7 +229,50 @@ function formatTime(ts){
   return `${h}:${m}`;
 }
 
-// ─── XP & QUESTS (შემცირებული XP) ────────────────────────────────────────
+// ─── THEME ─────────────────────────────────────────────────────────────────
+function applyEquippedTheme(){
+  const root = document.documentElement;
+  const defaultVars = {
+    '--bg':'#07070f','--bg2':'#0d0d1c','--s1':'#11111e','--s2':'#171729','--s3':'#1f1f35','--s4':'#27273f',
+    '--border':'#2a2a48','--border2':'#353558','--gold':'#c8a84b','--gold2':'#e8c96a','--gold3':'#f5dfa0',
+    '--blu':'#4a9eff','--blu-d':'rgba(74,158,255,.13)','--grn':'#00c96e','--grn-d':'rgba(0,201,110,.13)',
+    '--red':'#ff4a6e','--red-d':'rgba(255,74,110,.1)','--txt':'#eeeef8','--txt2':'#8888aa'
+  };
+  Object.entries(defaultVars).forEach(([k,v]) => root.style.setProperty(k, v));
+  if(S.equippedTheme){
+    const themeItem = SHOP_ITEMS.find(i => i.id === S.equippedTheme);
+    if(themeItem && themeItem.data){
+      Object.entries(themeItem.data).forEach(([k,v]) => root.style.setProperty(k, v));
+    }
+  }
+}
+
+// ─── TOAST ─────────────────────────────────────────────────────────────────
+function showToast(message, icon='🏆'){
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.innerHTML = `${icon} ${message}`;
+  container.appendChild(toast);
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.frequency.value = 1200; osc.type = 'triangle';
+  gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+0.3);
+  osc.start(); osc.stop(audioCtx.currentTime+0.3);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+// ─── AUTO SCROLL ───────────────────────────────────────────────────────────
+function scrollModalBottom(){
+  setTimeout(() => {
+    const modal = document.querySelector('#modal-overlay .modal');
+    if(modal) modal.scrollTo({ top: modal.scrollHeight, behavior: 'smooth' });
+  }, 200);
+}
+
+// ─── XP & QUESTS ──────────────────────────────────────────────────────────
 function addXP(amount){
   S.user.xp = (S.user.xp || 0) + amount;
   saveUserToFirebase();
@@ -244,29 +308,42 @@ function checkQuestCompletion(){
     if(q.completed) return;
     let progress = 0;
     const entry = S.logs[today];
-    if(q.id === 'sets5'){
-      progress = entry?.type==='workout' ? entry.sets.length : 0;
-    } else if(q.id === 'rep100'){
-      progress = entry?.type==='workout' ? entry.total : 0;
-    } else if(q.id === 'early'){
+    if(q.id === 'sets5') progress = entry?.type==='workout' ? entry.sets.length : 0;
+    else if(q.id === 'rep100') progress = entry?.type==='workout' ? entry.total : 0;
+    else if(q.id === 'early'){
       if(entry?.type==='workout' && entry.timestamp){
         const h = new Date(entry.timestamp).getHours();
         if(h < 10) progress = 1;
       }
-    } else if(q.id === 'streak3'){
-      const st = streak();
-      progress = Math.min(st, q.goal);
-    } else if(q.id === 'rest'){
-      if(entry?.type === 'rest') progress = 1;
-    }
+    } else if(q.id === 'streak3') progress = Math.min(streak(), q.goal);
+    else if(q.id === 'rest') progress = entry?.type === 'rest' ? 1 : 0;
     q.progress = progress;
-    if(progress >= q.goal){
+    if(progress >= q.goal && !q.completed){
       q.completed = true;
       addXP(q.reward);
+      showToast(`Quest Complete: ${q.desc} (+${q.reward} XP)`, '✅');
       changed = true;
     }
   });
   if(changed) questsRef().set(S.quests);
+}
+
+function checkDailyGoal(){
+  const entry = S.logs[todayStr()];
+  if(entry?.type==='workout' && entry.total >= S.user.target){
+    showToast(`Daily Target Reached! 🎯 ${entry.total}/${S.user.target}`, '🎯');
+  }
+}
+
+function checkAchievements(){
+  const achList = getAchievements();
+  achList.forEach(a => {
+    if(a.unlocked && !S.unlockedAchievements.has(a.id)){
+      S.unlockedAchievements.add(a.id);
+      showToast(`Achievement Unlocked: ${a.name} (+${a.xp} XP)`, a.icon);
+    }
+  });
+  saveUserToFirebase();
 }
 
 // ─── ONBOARDING ────────────────────────────────────────────────────────────
@@ -309,6 +386,11 @@ function obBack(toStep){
 function obFinish(){
   S.user={...S.tmpUser,avatar:S.selAv,avatarImg:null,startDate:todayStr(),xp:0};
   S.friends = {};
+  S.inventory = [];
+  S.equippedTheme = null;
+  S.equippedTitle = null;
+  S.status = '';
+  S.unlockedAchievements = new Set();
   saveUserToFirebase();
   document.getElementById('ob').classList.add('hidden');
   go('home');
@@ -460,6 +542,7 @@ function openLog(dateStr){
   }
   renderModalSets();
   showModal();
+  scrollModalBottom();
 }
 
 function openDatePick(){
@@ -515,19 +598,14 @@ function togSet(i){
   s.done = !s.done;
   s.time = s.done ? Date.now() : null;
   renderModalSets();
+  scrollModalBottom();
 }
-
 function updReps(i,v){
   S.modalSets[i].reps = parseInt(v) || 0;
   const total = S.modalSets.reduce((s,x) => s + (x.done ? x.reps : 0), 0);
-  const el = document.getElementById('mod-tot');
-  if(el) el.textContent = total;
+  const el = document.getElementById('mod-tot'); if(el) el.textContent = total;
 }
-
-function addSet(){
-  S.modalSets.push({reps:10, done:false, time:null});
-  renderModalSets();
-}
+function addSet(){ S.modalSets.push({reps:10, done:false, time:null}); renderModalSets(); scrollModalBottom(); }
 
 function saveWorkout(){
   const done = S.modalSets.filter(s => s.done);
@@ -536,20 +614,20 @@ function saveWorkout(){
   const total = setsToStore.reduce((sum, s) => sum + s.reps, 0);
   S.logs[S.logDate] = { type:'workout', sets: setsToStore, total, timestamp: Date.now() };
   saveLogsToFirebase();
-  addXP(Math.floor(total / 5));  // 1 XP per 5 pull-ups
+  addXP(Math.floor(total / 5));
   checkQuestCompletion();
+  checkDailyGoal();
+  checkAchievements();
   hideModal();
   render(S.curPage);
 }
-
 function saveRest(ds){
   S.logs[ds] = { type:'rest', sets:[], total:0, timestamp:Date.now() };
   saveLogsToFirebase();
+  checkQuestCompletion();
   render(S.curPage);
 }
-
 function saveRestFromModal(){ saveRest(S.logDate); hideModal(); }
-
 function deleteLog(){
   if(!confirm('Remove this log entry?'))return;
   delete S.logs[S.logDate];
@@ -583,7 +661,6 @@ function renderStats(){
     return`<div class="bw"><div style="font-size:9px;color:var(--txt2);margin-bottom:2px">${d.val||''}</div><div class="bar ${cls}" style="height:${h}px"></div><div class="bl">${d.label}</div></div>`;
   }).join('');
 
-  // Achievements (XP scaled down)
   const achList = getAchievements();
   let achHTML = '';
   achList.forEach(a => {
@@ -625,12 +702,10 @@ function renderStats(){
   document.getElementById('page-stats').innerHTML=`
     <div class="sh">STATISTICS</div>
     <div class="ss">Full performance breakdown</div>
-    <!-- Today's Pull-Ups Hero -->
     <div class="today-hero">
       <div class="today-hero-n">${todayReps}</div>
       <div class="today-hero-l">Today's Pull-Ups</div>
     </div>
-    <!-- Total Pull-Ups Hero -->
     <div class="hero"><div class="hero-n">${tr.toLocaleString()}</div><div class="hero-l">Total Pull-Ups</div></div>
     <div class="sg">
       <div class="sgc"><div class="sgc-v">${wd.length}</div><div class="sgc-l">Workouts</div></div>
@@ -660,36 +735,57 @@ function getAchievements(){
   const goal = S.user?.goalDays||30; const target = S.user?.target||100;
   const hitDays = wDays().filter(([,v])=>v.total >= target).length;
   return [
-    { icon:'🥇', name:'First Workout', desc:'Complete 1 workout', max:1, current: wd >=1 ? 1 : 0, unlocked: wd >=1, xp: 10 },
-    { icon:'🔥', name:'7-Day Streak', desc:'Maintain a streak of 7 days', max:7, current: Math.min(st,7), unlocked: st >=7, xp: 40 },
-    { icon:'💪', name:'Pull-Up Centurion', desc:'Reach 1,000 total pull-ups', max:1000, current: Math.min(tr,1000), unlocked: tr >=1000, xp: 100 },
-    { icon:'⚡', name:'Iron Man', desc:'10,000 total pull-ups', max:10000, current: Math.min(tr,10000), unlocked: tr >=10000, xp: 400 },
-    { icon:'🏋️', name:'Dedicated', desc:'Complete 10 workouts', max:10, current: Math.min(wd,10), unlocked: wd >=10, xp: 30 },
-    { icon:'🎯', name:'Consistent', desc:'Hit daily target 5 times', max:5, current: Math.min(hitDays,5), unlocked: hitDays >=5, xp: 50 },
-    { icon:'🏆', name:'Challenge Champion', desc:`Complete your challenge (${goal} days)`, max:goal, current: Math.min(wd,goal), unlocked: wd >= goal, xp: 200 },
-    { icon:'🦾', name:'Heavy Lifter', desc:'Best day: 200 pull-ups', max:200, current: Math.min(bd,200), unlocked: bd >=200, xp: 60 },
-    { icon:'🌟', name:'Halfway Hero', desc:'Reach 50% challenge completion', unlocked: wd >= goal/2, xp: 40 },
-    { icon:'👑', name:'IronPull Legend', desc:'Unlock all achievements', unlocked: false, xp: 1000 }
+    { id:'first', icon:'🥇', name:'First Workout', desc:'Complete 1 workout', max:1, current: wd >=1 ? 1 : 0, unlocked: wd >=1, xp: 10 },
+    { id:'streak7', icon:'🔥', name:'7-Day Streak', desc:'Maintain a streak of 7 days', max:7, current: Math.min(st,7), unlocked: st >=7, xp: 40 },
+    { id:'centurion', icon:'💪', name:'Pull-Up Centurion', desc:'Reach 1,000 total pull-ups', max:1000, current: Math.min(tr,1000), unlocked: tr >=1000, xp: 100 },
+    { id:'ironman', icon:'⚡', name:'Iron Man', desc:'10,000 total pull-ups', max:10000, current: Math.min(tr,10000), unlocked: tr >=10000, xp: 400 },
+    { id:'dedicated', icon:'🏋️', name:'Dedicated', desc:'Complete 10 workouts', max:10, current: Math.min(wd,10), unlocked: wd >=10, xp: 30 },
+    { id:'consistent', icon:'🎯', name:'Consistent', desc:'Hit daily target 5 times', max:5, current: Math.min(hitDays,5), unlocked: hitDays >=5, xp: 50 },
+    { id:'champion', icon:'🏆', name:'Challenge Champion', desc:`Complete your challenge (${goal} days)`, max:goal, current: Math.min(wd,goal), unlocked: wd >= goal, xp: 200 },
+    { id:'heavy', icon:'🦾', name:'Heavy Lifter', desc:'Best day: 200 pull-ups', max:200, current: Math.min(bd,200), unlocked: bd >=200, xp: 60 },
+    { id:'halfway', icon:'🌟', name:'Halfway Hero', desc:'Reach 50% challenge completion', unlocked: wd >= goal/2, xp: 40 },
+    { id:'legend', icon:'👑', name:'IronPull Legend', desc:'Unlock all achievements', unlocked: false, xp: 1000 }
   ];
 }
 
-// ─── PROFILE (Shop-ის ღილაკით) ──────────────────────────────────────────
+// ─── PROFILE ────────────────────────────────────────────────────────────────
 function renderProf(){
-  const u=S.user;
+  const u = S.user;
   const av = u.avatarImg ? `<img src="${u.avatarImg}">` : u.avatar;
   S.editMode = S.editMode || false;
+
+  let adminHTML = '';
+  if(u.role === 'admin'){
+    adminHTML = `
+      <div class="admin-panel">
+        <div class="card-title">🔧 Admin Panel</div>
+        <div class="fg">
+          <input class="fi" id="admin-uid-input" placeholder="Enter user UID to edit">
+        </div>
+        <button class="btn btn-gold" onclick="adminLoadUser()" style="margin-bottom:12px;">Load User</button>
+        <div id="admin-user-edit" style="display:none;">
+          <div class="fg"><label class="fl">Name</label><input class="fi" id="admin-e-name" maxlength="20"></div>
+          <div class="fg"><label class="fl">Age</label><input class="fi" id="admin-e-age" type="number" min="10" max="99"></div>
+          <div class="fg"><label class="fl">Goal Days</label><input class="fi" id="admin-e-days" type="number" min="7" max="365"></div>
+          <div class="fg"><label class="fl">Daily Target</label><input class="fi" id="admin-e-target" type="number" min="10"></div>
+          <div class="fg"><label class="fl">Quote</label><input class="fi" id="admin-e-quote" maxlength="90"></div>
+          <button class="btn btn-gold" onclick="adminSaveUser()">Save User</button>
+          <button class="btn btn-dark" onclick="adminClear()">Cancel</button>
+        </div>
+      </div>
+    `;
+  }
 
   document.getElementById('page-prof').innerHTML = `
     <div style="position:relative;">
       <div class="sh">PROFILE</div>
-      <button class="prof-shop-btn" onclick="go('shop')">
-        🛒 Shop <span style="font-size:12px;">⭐ ${u.xp}</span>
-      </button>
+      <button class="prof-shop-btn" onclick="go('shop')">🛒 Shop <span style="font-size:12px;">⭐ ${u.xp}</span></button>
     </div>
     <div class="prof-top">
       <div class="p-av" onclick="document.getElementById('avatar-upload').click()">${av}<div class="p-av-ovr">CHANGE</div></div>
       <div id="profile-view" style="${S.editMode ? 'display:none' : ''}">
-        <div class="p-name">${escapeHtml(u.name.toUpperCase())}</div>
+        <div class="p-name">${escapeHtml(u.name.toUpperCase())} ${u.equippedTitle ? `<span class="title-badge">${getTitleText(u.equippedTitle)}</span>` : ''} ${u.role==='admin' ? '<span class="admin-badge">ADMIN</span>' : ''}</div>
+        ${u.status ? `<div style="color:var(--txt2);font-size:13px;margin-top:4px;">💬 ${escapeHtml(u.status)}</div>` : ''}
         <div class="p-age">Age ${u.age} · ${u.goalDays}-day challenge</div>
         <div class="p-quote">"${escapeHtml(u.quote)}"</div>
         <div class="xp-badge" style="margin-top:10px;">⭐ ${u.xp} XP</div>
@@ -698,6 +794,8 @@ function renderProf(){
           <button onclick="copyUID()" style="background:var(--gold-d);border:1px solid var(--gold);color:var(--gold);border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer">📋 Copy</button>
         </div>
         <button class="btn btn-gold" style="margin-top:20px;" onclick="toggleEdit(true)">✏️ Edit Profile</button>
+        <button class="btn btn-gold" style="margin-top:12px;" onclick="openInventory()">🎒 Inventory</button>
+        ${adminHTML}
       </div>
       <div id="profile-edit" style="${S.editMode ? '' : 'display:none'}">
         <div class="card">
@@ -707,6 +805,7 @@ function renderProf(){
           <div class="fg"><label class="fl">Goal Days</label><input class="fi" id="e-days" type="number" value="${u.goalDays}" min="7" max="365"></div>
           <div class="fg"><label class="fl">Daily Target</label><input class="fi" id="e-target" type="number" value="${u.target||100}" min="10"></div>
           <div class="fg"><label class="fl">Quote</label><input class="fi" id="e-quote" value="${escapeHtml(u.quote)}" maxlength="90"></div>
+          <div class="fg"><label class="fl">Status / Note</label><input class="fi" id="e-status" value="${escapeHtml(u.status)}" maxlength="60"></div>
           <div class="fg"><label class="fl">Avatar Emoji</label><div class="av-grid" id="edit-av-grid"></div></div>
           <div style="display:flex; gap:10px;">
             <button class="btn btn-gold" id="save-btn" onclick="saveProf()">Save Changes</button>
@@ -738,14 +837,18 @@ function saveProf(){
   S.user.goalDays = parseInt(document.getElementById('e-days').value)||S.user.goalDays;
   S.user.target = parseInt(document.getElementById('e-target').value)||S.user.target;
   S.user.quote = document.getElementById('e-quote').value.trim()||S.user.quote;
+  S.user.status = document.getElementById('e-status').value.trim();
   if(S.editAv) S.user.avatar = S.editAv;
   saveUserToFirebase();
   const btn = document.getElementById('save-btn');
   btn.classList.add('btn-saved');
   btn.innerHTML = '✓ Saved!';
-  setTimeout(() => {
-    toggleEdit(false);
-  }, 1500);
+  setTimeout(() => { toggleEdit(false); }, 1500);
+}
+
+function getTitleText(titleId){
+  const item = SHOP_ITEMS.find(i => i.id === titleId);
+  return item ? item.data : '';
 }
 
 function copyUID(){
@@ -761,6 +864,45 @@ function handleAvatarUpload(input){
     render('prof');
   };
   reader.readAsDataURL(file);
+}
+
+// ─── ADMIN ──────────────────────────────────────────────────────────────────
+function adminLoadUser(){
+  const uid = document.getElementById('admin-uid-input').value.trim();
+  if(!uid) return alert('Enter UID');
+  db.ref('users/' + uid).once('value').then(snap => {
+    const data = snap.val();
+    if(!data) return alert('User not found');
+    S.adminTargetUser = { uid, data };
+    document.getElementById('admin-user-edit').style.display = 'block';
+    document.getElementById('admin-e-name').value = data.name || '';
+    document.getElementById('admin-e-age').value = data.age || '';
+    document.getElementById('admin-e-days').value = data.goalDays || '';
+    document.getElementById('admin-e-target').value = data.target || '';
+    document.getElementById('admin-e-quote').value = data.quote || '';
+  });
+}
+
+function adminSaveUser(){
+  if(!S.adminTargetUser) return;
+  const newData = {
+    name: document.getElementById('admin-e-name').value.trim(),
+    age: parseInt(document.getElementById('admin-e-age').value) || 0,
+    goalDays: parseInt(document.getElementById('admin-e-days').value) || 30,
+    target: parseInt(document.getElementById('admin-e-target').value) || 100,
+    quote: document.getElementById('admin-e-quote').value.trim(),
+  };
+  if(!newData.name) return alert('Name required');
+  db.ref('users/' + S.adminTargetUser.uid).update(newData).then(() => {
+    alert('User updated!');
+    adminClear();
+  });
+}
+
+function adminClear(){
+  S.adminTargetUser = null;
+  document.getElementById('admin-user-edit').style.display = 'none';
+  document.getElementById('admin-uid-input').value = '';
 }
 
 // ─── FRIENDS ───────────────────────────────────────────────────────────────
@@ -783,7 +925,7 @@ function renderFriends(){
         return `<div class="friend-card" onclick="viewFriend('${uid}')">
           <div class="friend-av">${friend.avatar||'👤'}</div>
           <div class="friend-info">
-            <div class="friend-name">${escapeHtml(friend.name||'Unknown')}</div>
+            <div class="friend-name">${escapeHtml(friend.name||'Unknown')} ${friend.role==='admin' ? '<span class="admin-badge">ADMIN</span>' : ''} ${friend.title ? `<span class="title-badge">${friend.title}</span>` : ''}</div>
             <div class="friend-detail">Tap to view stats</div>
           </div>
           <button class="friend-remove" onclick="event.stopPropagation(); removeFriend('${uid}')">✕</button>
@@ -801,7 +943,15 @@ function addFriend(){
     const val = snap.val();
     if(!val) return alert('User not found');
     if(!S.friends) S.friends = {};
-    S.friends[uid] = { name: val.name, avatar: val.avatar, avatarImg: val.avatarImg || null };
+    S.friends[uid] = { 
+      name: val.name, 
+      avatar: val.avatar, 
+      avatarImg: val.avatarImg || null,
+      role: val.role || null,
+      title: val.equippedTitle ? getTitleText(val.equippedTitle) : null,
+      status: val.status || '',
+      xp: val.xp || 0
+    };
     friendsRef().set(S.friends);
     render('friends');
   }).catch(e => alert('Error: '+e.message));
@@ -842,6 +992,7 @@ function showFriendView(uid, f){
   const todayLog = logs[todayStr()];
   const todayReps = todayLog?.type==='workout' ? todayLog.total : 0;
   const xp = f.xp || 0;
+  const friendStatus = f.status || '';
 
   const av = f.avatarImg ? `<img src="${f.avatarImg}" style="width:60px;height:60px;border-radius:50%;object-fit:cover">` : f.avatar;
 
@@ -854,16 +1005,15 @@ function showFriendView(uid, f){
     </div>
     <div class="prof-top" style="padding-top:0">
       <div style="font-size:60px">${av}</div>
-      <div class="p-name">${escapeHtml(f.name.toUpperCase())}</div>
+      <div class="p-name">${escapeHtml(f.name.toUpperCase())} ${f.equippedTitle ? `<span class="title-badge">${getTitleText(f.equippedTitle)}</span>` : ''} ${f.role==='admin' ? '<span class="admin-badge">ADMIN</span>' : ''}</div>
+      ${friendStatus ? `<div style="color:var(--txt2);font-size:13px;margin-top:4px;">💬 ${escapeHtml(friendStatus)}</div>` : ''}
       <div class="p-age">Age ${f.age} · ${f.goalDays}-day challenge</div>
       <div class="xp-badge">⭐ ${xp} XP</div>
     </div>
-    <!-- Today's Pull-Ups Hero -->
     <div class="today-hero">
       <div class="today-hero-n">${todayReps}</div>
       <div class="today-hero-l">Today's Pull-Ups</div>
     </div>
-    <!-- Total Pull-Ups Hero -->
     <div class="hero"><div class="hero-n">${total.toLocaleString()}</div><div class="hero-l">Total Pull-Ups</div></div>
     <div class="sg">
       <div class="sgc"><div class="sgc-v">${w.length}</div><div class="sgc-l">Workouts</div></div>
@@ -882,13 +1032,143 @@ function closeFriendView(){
   document.getElementById('friend-view').classList.add('hidden');
 }
 
+// ─── INVENTORY MODAL ───────────────────────────────────────────────────────
+function openInventory(){
+  document.getElementById('inventory-modal').classList.remove('hidden');
+  // Activate first tab
+  document.querySelectorAll('.inv-tab').forEach(t => t.classList.remove('active'));
+  document.querySelector('.inv-tab[data-tab="themes"]').classList.add('active');
+  renderInventory('themes');
+  // Tab events
+  document.querySelectorAll('.inv-tab').forEach(tab => {
+    tab.onclick = function(){
+      document.querySelectorAll('.inv-tab').forEach(t => t.classList.remove('active'));
+      this.classList.add('active');
+      renderInventory(this.dataset.tab);
+    };
+  });
+}
+
+function closeInventory(){
+  document.getElementById('inventory-modal').classList.add('hidden');
+}
+
+function renderInventory(type){
+  const container = document.getElementById('inv-items-container');
+  let items = [];
+  if(type === 'themes'){
+    items = S.inventory.filter(id => SHOP_ITEMS.find(i => i.id === id && i.type === 'theme'));
+  } else if(type === 'titles'){
+    items = S.inventory.filter(id => SHOP_ITEMS.find(i => i.id === id && i.type === 'title'));
+  }
+
+  let html = '';
+  items.forEach(itemId => {
+    const item = SHOP_ITEMS.find(i => i.id === itemId);
+    if(!item) return;
+    const isEquipped = (item.type==='theme' && S.equippedTheme===itemId) || (item.type==='title' && S.equippedTitle===itemId);
+    html += `
+      <div class="inv-item">
+        <div>
+          <div class="inv-item-name">${item.name || item.data} ${isEquipped?'(Equipped)':''}</div>
+          <div style="font-size:11px;color:var(--txt2)">${item.desc}</div>
+        </div>
+        <div class="inv-item-actions">
+          <button class="btn btn-blue" style="padding:6px 12px;font-size:12px;width:auto;" onclick="equipItem('${item.id}')">${isEquipped?'Unequip':'Equip'}</button>
+        </div>
+      </div>
+    `;
+  });
+
+  if(!html) html = '<div style="text-align:center;color:var(--txt2);padding:20px;">No items in this category.</div>';
+  container.innerHTML = html;
+}
+
+// Close inventory when clicking outside
+document.getElementById('inventory-modal').addEventListener('click', function(e){
+  if(e.target === this) closeInventory();
+});
+
 // ─── SHOP ──────────────────────────────────────────────────────────────────
 function renderShop(){
-  document.getElementById('page-shop').innerHTML = `
+  const themes = SHOP_ITEMS.filter(i => i.type === 'theme');
+  const titles = SHOP_ITEMS.filter(i => i.type === 'title');
+
+  let html = `
     <div class="sh">SHOP</div>
     <div class="xp-badge" style="font-size:18px; margin-bottom:20px;">⭐ ${S.user.xp} XP</div>
-    <div class="shop-soon">🛍️ Items coming soon!<br><span style="font-size:14px;">Earn XP by working out, completing quests & achievements.</span></div>
   `;
+
+  html += `<div class="ach-card"><div class="ach-title">Themes</div>`;
+  themes.forEach(item => {
+    const owned = S.inventory.includes(item.id);
+    const equipped = S.equippedTheme === item.id;
+    html += `
+      <div class="inv-item">
+        <div>
+          <div class="inv-item-name">${item.name} ${equipped?'(Active)':''}</div>
+          <div style="font-size:11px;color:var(--txt2)">${item.desc}</div>
+        </div>
+        <div>
+          <span style="color:var(--gold);font-weight:600;">${item.price} XP</span>
+          ${owned ? 
+            `<button class="btn btn-blue" style="padding:6px 12px;font-size:12px;width:auto;" onclick="equipItem('${item.id}')">${equipped?'Unequip':'Equip'}</button>` :
+            `<button class="btn btn-gold" style="padding:6px 12px;font-size:12px;width:auto;" onclick="buyItem('${item.id}')">Buy</button>`
+          }
+        </div>
+      </div>
+    `;
+  });
+  html += `</div>`;
+
+  html += `<div class="ach-card"><div class="ach-title">Titles</div>`;
+  titles.forEach(item => {
+    const owned = S.inventory.includes(item.id);
+    const equipped = S.equippedTitle === item.id;
+    html += `
+      <div class="inv-item">
+        <div>
+          <div class="inv-item-name">${item.data}</div>
+          <div style="font-size:11px;color:var(--txt2)">${item.desc}</div>
+        </div>
+        <div>
+          <span style="color:var(--gold);font-weight:600;">${item.price} XP</span>
+          ${owned ? 
+            `<button class="btn btn-blue" style="padding:6px 12px;font-size:12px;width:auto;" onclick="equipItem('${item.id}')">${equipped?'Unequip':'Equip'}</button>` :
+            `<button class="btn btn-gold" style="padding:6px 12px;font-size:12px;width:auto;" onclick="buyItem('${item.id}')">Buy</button>`
+          }
+        </div>
+      </div>
+    `;
+  });
+  html += `</div>`;
+
+  document.getElementById('page-shop').innerHTML = html;
+}
+
+function buyItem(itemId){
+  const item = SHOP_ITEMS.find(i => i.id === itemId);
+  if(!item) return;
+  if(S.inventory.includes(itemId)) return alert('Already owned');
+  if(S.user.xp < item.price) return alert('Not enough XP');
+  S.user.xp -= item.price;
+  S.inventory.push(itemId);
+  saveUserToFirebase();
+  showToast(`Purchased: ${item.name}`, '🛒');
+  render('shop');
+}
+
+function equipItem(itemId){
+  const item = SHOP_ITEMS.find(i => i.id === itemId);
+  if(!item) return;
+  if(item.type === 'theme'){
+    S.equippedTheme = (S.equippedTheme === itemId) ? null : itemId;
+  } else if(item.type === 'title'){
+    S.equippedTitle = (S.equippedTitle === itemId) ? null : itemId;
+  }
+  saveUserToFirebase();
+  applyEquippedTheme();
+  render(S.curPage === 'shop' ? 'shop' : 'prof');
 }
 
 // ─── APP ICON GENERATION (PWA) ────────────────────────────────────────────
@@ -923,6 +1203,7 @@ function renderShop(){
 
 // ─── HELPERS ───────────────────────────────────────────────────────────────
 function escapeHtml(str){
+  if (str == null) return '';
   return str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[m]);
 }
 
