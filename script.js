@@ -905,7 +905,7 @@ function adminClear(){
   document.getElementById('admin-uid-input').value = '';
 }
 
-// ─── FRIENDS ───────────────────────────────────────────────────────────────
+// ─── FRIENDS (with Today's Pull-Ups) ──────────────────────────────────────
 function renderFriends(){
   const friends = S.friends || {};
   const friendList = Object.entries(friends);
@@ -918,21 +918,38 @@ function renderFriends(){
       <input class="fi" id="friend-uid-input" placeholder="Friend's User ID">
     </div>
     <button class="btn btn-gold" onclick="addFriend()">+ Add Friend</button>
-    <div style="margin-top:14px">
+    <div style="margin-top:14px" id="friend-list-container">
       ${friendList.length===0 ? '<div style="color:var(--txt2);text-align:center;padding:20px">No friends yet. Add someone!</div>' : ''}
       ${friendList.map(([uid]) => {
         const friend = friends[uid] || {};
-        return `<div class="friend-card" onclick="viewFriend('${uid}')">
+        return `<div class="friend-card" onclick="viewFriend('${uid}')" id="fc-${uid}">
           <div class="friend-av">${friend.avatar||'👤'}</div>
           <div class="friend-info">
             <div class="friend-name">${escapeHtml(friend.name||'Unknown')} ${friend.role==='admin' ? '<span class="admin-badge">ADMIN</span>' : ''} ${friend.title ? `<span class="title-badge">${friend.title}</span>` : ''}</div>
-            <div class="friend-detail">Tap to view stats</div>
+            <div class="friend-detail" id="frd-${uid}">...</div>
           </div>
           <button class="friend-remove" onclick="event.stopPropagation(); removeFriend('${uid}')">✕</button>
         </div>`;
       }).join('')}
     </div>
   `;
+
+  // Now fetch today's pull-ups for each friend
+  friendList.forEach(([uid]) => {
+    db.ref('users/' + uid + '/logs/' + todayStr()).once('value').then(snap => {
+      const val = snap.val();
+      const detailEl = document.getElementById('frd-'+uid);
+      if(detailEl){
+        if(val && val.type === 'workout'){
+          detailEl.innerHTML = `Today: <strong style="color:var(--gold)">${val.total}</strong> pull-ups`;
+        } else if(val && val.type === 'rest'){
+          detailEl.textContent = 'Rest day';
+        } else {
+          detailEl.textContent = 'Not logged today';
+        }
+      }
+    });
+  });
 }
 
 function addFriend(){
@@ -1035,11 +1052,9 @@ function closeFriendView(){
 // ─── INVENTORY MODAL ───────────────────────────────────────────────────────
 function openInventory(){
   document.getElementById('inventory-modal').classList.remove('hidden');
-  // Activate first tab
   document.querySelectorAll('.inv-tab').forEach(t => t.classList.remove('active'));
   document.querySelector('.inv-tab[data-tab="themes"]').classList.add('active');
   renderInventory('themes');
-  // Tab events
   document.querySelectorAll('.inv-tab').forEach(tab => {
     tab.onclick = function(){
       document.querySelectorAll('.inv-tab').forEach(t => t.classList.remove('active'));
@@ -1084,7 +1099,6 @@ function renderInventory(type){
   container.innerHTML = html;
 }
 
-// Close inventory when clicking outside
 document.getElementById('inventory-modal').addEventListener('click', function(e){
   if(e.target === this) closeInventory();
 });
