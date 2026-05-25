@@ -1,3 +1,6 @@
+// ─── FALLBACK t (English) ──────────────────────────────────────────────────
+function t(key) { return key; }
+
 // ─── FIREBASE ────────────────────────────────────────────────────────────────
 const firebaseConfig = {
   apiKey: "AIzaSyCjPbqIGxokUxUAe-CpexWIbhf62C1il68",
@@ -18,18 +21,24 @@ const AVATARS=['💪','🦾','🏋️','⚡','🔥','🎯','🏆','👊','🦁',
 const DAYS_SHORT=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 
-// ─── SHOP ITEMS ────────────────────────────────────────────────────────────
+// ─── SHOP ITEMS (THEMES, TITLES, FRAMES) ──────────────────────────────────
 const SHOP_ITEMS = [
+  // Themes
   { id:'theme-ocean', name:'Ocean Breeze', desc:'Cool blue tones', price:200, type:'theme', data:{ '--bg':'#0b1a2a','--bg2':'#0e2540','--gold':'#4a9eff','--gold2':'#6cb4ff','--border':'#1e3a5f','--s1':'#0f2d4a','--s2':'#143556' } },
   { id:'theme-sunset', name:'Sunset Glow', desc:'Warm orange/pink', price:250, type:'theme', data:{ '--bg':'#1a0e0b','--bg2':'#2d140f','--gold':'#ff8c42','--gold2':'#ffaa5e','--border':'#5f2a1e','--s1':'#2d1a12','--s2':'#3f2218' } },
   { id:'theme-forest', name:'Deep Forest', desc:'Natural greens', price:200, type:'theme', data:{ '--bg':'#0d1e0d','--bg2':'#142814','--gold':'#4caf50','--gold2':'#81c784','--border':'#1e4a1e','--s1':'#1a331a','--s2':'#224422' } },
   { id:'theme-neon', name:'Neon Nights', desc:'Cyberpunk glow', price:400, type:'theme', data:{ '--bg':'#0f0f1a','--bg2':'#1a1a2e','--gold':'#ff007f','--gold2':'#ff6ec7','--border':'#7a0035','--s1':'#1a1a2e','--s2':'#2a2a4e' } },
   { id:'theme-royal', name:'Royal Purple', desc:'Luxury purple & gold', price:350, type:'theme', data:{ '--bg':'#1a0e1a','--bg2':'#2d142d','--gold':'#d4af37','--gold2':'#e5c158','--border':'#5f1e5f','--s1':'#2d142d','--s2':'#3f1e3f' } },
   { id:'theme-mystic', name:'Mystic Void', desc:'Another dimension', price:600, type:'theme', data:{ '--bg':'#0a0a1a','--bg2':'#12122a','--gold':'#9b59b6','--gold2':'#c39bd3','--border':'#3d1a6e','--s1':'#16162e','--s2':'#1e1e3e' } },
+  // Titles
   { id:'title-iron', name:'Iron Warrior', desc:'Title: Iron Warrior', price:100, type:'title', data:'🦾 Iron Warrior' },
   { id:'title-beast', name:'Beast Mode', desc:'Title: Beast Mode', price:150, type:'title', data:'🔥 Beast Mode' },
   { id:'title-legend', name:'Living Legend', desc:'Title: Living Legend', price:250, type:'title', data:'👑 Living Legend' },
   { id:'title-mythic', name:'Mythic Puller', desc:'Title: Mythic Puller', price:500, type:'title', data:'⚡ Mythic Puller' },
+  // Frames
+  { id:'frame-gold', name:'Gold Frame', desc:'Shiny gold border', price:300, type:'frame', data:'frame-gold' },
+  { id:'frame-neon', name:'Neon Frame', desc:'Glowing neon', price:400, type:'frame', data:'frame-neon' },
+  { id:'frame-lightning', name:'Lightning Frame', desc:'Electric effect', price:500, type:'frame', data:'frame-lightning' },
 ];
 
 // ─── STATE ──────────────────────────────────────────────────────────────────
@@ -42,7 +51,7 @@ let S={
   tmpUser:{},
   selAv:AVATARS[0],
   editAv:null,
-  modalSets:[],
+  modalSets:[],   // {reps, done, time: timestamp|null}
   logDate:null,
   friends:{},
   quests:[],
@@ -51,6 +60,7 @@ let S={
   inventory:[],
   equippedTheme:null,
   equippedTitle:null,
+  equippedFrame:null,
   status:'',
   unlockedAchievements: new Set(),
 };
@@ -73,6 +83,7 @@ function syncFromFirebase(){
       S.inventory = val.inventory || [];
       S.equippedTheme = val.equippedTheme || null;
       S.equippedTitle = val.equippedTitle || null;
+      S.equippedFrame = val.equippedFrame || null;
       S.status = val.status || '';
       S.unlockedAchievements = new Set(val.unlockedAchievements || []);
       applyEquippedTheme();
@@ -104,6 +115,7 @@ function saveUserToFirebase(){
     inventory: S.inventory,
     equippedTheme: S.equippedTheme,
     equippedTitle: S.equippedTitle,
+    equippedFrame: S.equippedFrame,
     status: S.status,
     unlockedAchievements: Array.from(S.unlockedAchievements),
     logs: S.logs,
@@ -209,14 +221,6 @@ function streak(){
 function pct(){const g=S.user?.goalDays||30;return Math.min(100,Math.round(wDays().length/g*100))}
 function dLeft(){return Math.max(0,(S.user?.goalDays||30)-wDays().length)}
 
-function suggestSets(n){
-  const t=S.user?.target||100;
-  let count=n<=7?10:n<=14?8:n<=21?6:5;
-  const base=Math.floor(t/count);
-  const rem=t-base*count;
-  return Array.from({length:count},(_,i)=>i<rem?base+1:base);
-}
-
 // ─── DATE UTILS ────────────────────────────────────────────────────────────
 const fmt=d=>d.toISOString().split('T')[0];
 const todayStr=()=>fmt(new Date());
@@ -262,14 +266,6 @@ function showToast(message, icon='🏆'){
   gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+0.3);
   osc.start(); osc.stop(audioCtx.currentTime+0.3);
   setTimeout(() => toast.remove(), 3000);
-}
-
-// ─── AUTO SCROLL ───────────────────────────────────────────────────────────
-function scrollModalBottom(){
-  setTimeout(() => {
-    const modal = document.querySelector('#modal-overlay .modal');
-    if(modal) modal.scrollTo({ top: modal.scrollHeight, behavior: 'smooth' });
-  }, 200);
 }
 
 // ─── XP & QUESTS ──────────────────────────────────────────────────────────
@@ -389,6 +385,7 @@ function obFinish(){
   S.inventory = [];
   S.equippedTheme = null;
   S.equippedTitle = null;
+  S.equippedFrame = null;
   S.status = '';
   S.unlockedAchievements = new Set();
   saveUserToFirebase();
@@ -424,13 +421,20 @@ function renderHome(){
     btnHTML=`<button class="btn btn-dark" onclick="openLog('${todayStr()}')">✏️ Edit Today's Log</button>`;
   }
 
-  const av=u.avatarImg?`<img src="${u.avatarImg}" style="width:44px;height:44px;object-fit:cover;border-radius:50%">`:u.avatar;
+  const av = u.avatarImg ? `<img src="${u.avatarImg}" style="width:44px;height:44px;object-fit:cover;border-radius:50%">` : u.avatar;
+  // Avatar frame
+  let frameClass = '';
+  if(S.equippedFrame){
+    const frameItem = SHOP_ITEMS.find(i => i.id === S.equippedFrame);
+    if(frameItem) frameClass = frameItem.data;
+  }
+  const avWithFrame = frameClass ? `<span class="avatar-frame ${frameClass}">${av}</span>` : av;
 
   document.getElementById('page-home').innerHTML=`
     <div class="home-top">
       <div>
         <div class="home-greet">${greet},</div>
-        <div class="home-name">${escapeHtml(u.name)} ${av}</div>
+        <div class="home-name">${escapeHtml(u.name)} ${avWithFrame}</div>
         <div class="xp-badge">⭐ ${u.xp} XP</div>
       </div>
       <div class="streak-pill">🔥 ${st} day${st!==1?'s':''}</div>
@@ -524,7 +528,7 @@ function chMo(dir){
   S.cal={y,m};renderCal();
 }
 
-// ─── LOG MODAL ─────────────────────────────────────────────────────────────
+// ─── LOG MODAL (NO AUTO‑SCROLL, EMPTY SETS) ───────────────────────────────
 function openLog(dateStr){
   S.logDate=dateStr;
   const existing=S.logs[dateStr];
@@ -536,13 +540,11 @@ function openLog(dateStr){
       S.modalSets = existingSets.map(s => ({reps: s.reps, done: true, time: s.time || null}));
     }
   } else {
-    const wn=wDays().length+1;
-    const suggested=suggestSets(wn);
-    S.modalSets = suggested.map(r => ({reps: r, done: false, time: null}));
+    S.modalSets = [];  // no pre‑filled sets
   }
   renderModalSets();
   showModal();
-  scrollModalBottom();
+  // NO scrollModalBottom()
 }
 
 function openDatePick(){
@@ -597,15 +599,17 @@ function togSet(i){
   const s = S.modalSets[i];
   s.done = !s.done;
   s.time = s.done ? Date.now() : null;
-  renderModalSets();
-  scrollModalBottom();
+  renderModalSets();  // re‑render to show time, no scroll
 }
 function updReps(i,v){
   S.modalSets[i].reps = parseInt(v) || 0;
   const total = S.modalSets.reduce((s,x) => s + (x.done ? x.reps : 0), 0);
   const el = document.getElementById('mod-tot'); if(el) el.textContent = total;
 }
-function addSet(){ S.modalSets.push({reps:10, done:false, time:null}); renderModalSets(); scrollModalBottom(); }
+function addSet(){
+  S.modalSets.push({reps:10, done:false, time:null});
+  renderModalSets();  // no scroll
+}
 
 function saveWorkout(){
   const done = S.modalSets.filter(s => s.done);
@@ -748,7 +752,7 @@ function getAchievements(){
   ];
 }
 
-// ─── PROFILE ────────────────────────────────────────────────────────────────
+// ─── PROFILE (with Inventory & Frame display) ───────────────────────────────
 function renderProf(){
   const u = S.user;
   const av = u.avatarImg ? `<img src="${u.avatarImg}">` : u.avatar;
@@ -905,7 +909,7 @@ function adminClear(){
   document.getElementById('admin-uid-input').value = '';
 }
 
-// ─── FRIENDS (with Today's Pull-Ups) ──────────────────────────────────────
+// ─── FRIENDS (with Today's Pull‑Ups & Frame) ──────────────────────────────
 function renderFriends(){
   const friends = S.friends || {};
   const friendList = Object.entries(friends);
@@ -934,7 +938,6 @@ function renderFriends(){
     </div>
   `;
 
-  // Now fetch today's pull-ups for each friend
   friendList.forEach(([uid]) => {
     db.ref('users/' + uid + '/logs/' + todayStr()).once('value').then(snap => {
       const val = snap.val();
@@ -1012,6 +1015,13 @@ function showFriendView(uid, f){
   const friendStatus = f.status || '';
 
   const av = f.avatarImg ? `<img src="${f.avatarImg}" style="width:60px;height:60px;border-radius:50%;object-fit:cover">` : f.avatar;
+  // Frame for friend
+  let frameClass = '';
+  if(f.equippedFrame){
+    const frameItem = SHOP_ITEMS.find(i => i.id === f.equippedFrame);
+    if(frameItem) frameClass = frameItem.data;
+  }
+  const avWithFrame = frameClass ? `<span class="avatar-frame ${frameClass}">${av}</span>` : av;
 
   document.getElementById('friend-view').innerHTML = `
     <div class="friend-view-header">
@@ -1021,7 +1031,7 @@ function showFriendView(uid, f){
       </div>
     </div>
     <div class="prof-top" style="padding-top:0">
-      <div style="font-size:60px">${av}</div>
+      <div style="font-size:60px">${avWithFrame}</div>
       <div class="p-name">${escapeHtml(f.name.toUpperCase())} ${f.equippedTitle ? `<span class="title-badge">${getTitleText(f.equippedTitle)}</span>` : ''} ${f.role==='admin' ? '<span class="admin-badge">ADMIN</span>' : ''}</div>
       ${friendStatus ? `<div style="color:var(--txt2);font-size:13px;margin-top:4px;">💬 ${escapeHtml(friendStatus)}</div>` : ''}
       <div class="p-age">Age ${f.age} · ${f.goalDays}-day challenge</div>
@@ -1049,7 +1059,7 @@ function closeFriendView(){
   document.getElementById('friend-view').classList.add('hidden');
 }
 
-// ─── INVENTORY MODAL ───────────────────────────────────────────────────────
+// ─── INVENTORY MODAL (Themes, Titles, Frames) ──────────────────────────────
 function openInventory(){
   document.getElementById('inventory-modal').classList.remove('hidden');
   document.querySelectorAll('.inv-tab').forEach(t => t.classList.remove('active'));
@@ -1075,13 +1085,17 @@ function renderInventory(type){
     items = S.inventory.filter(id => SHOP_ITEMS.find(i => i.id === id && i.type === 'theme'));
   } else if(type === 'titles'){
     items = S.inventory.filter(id => SHOP_ITEMS.find(i => i.id === id && i.type === 'title'));
+  } else if(type === 'frames'){
+    items = S.inventory.filter(id => SHOP_ITEMS.find(i => i.id === id && i.type === 'frame'));
   }
 
   let html = '';
   items.forEach(itemId => {
     const item = SHOP_ITEMS.find(i => i.id === itemId);
     if(!item) return;
-    const isEquipped = (item.type==='theme' && S.equippedTheme===itemId) || (item.type==='title' && S.equippedTitle===itemId);
+    const isEquipped = (item.type==='theme' && S.equippedTheme===itemId) ||
+                       (item.type==='title' && S.equippedTitle===itemId) ||
+                       (item.type==='frame' && S.equippedFrame===itemId);
     html += `
       <div class="inv-item">
         <div>
@@ -1107,6 +1121,7 @@ document.getElementById('inventory-modal').addEventListener('click', function(e)
 function renderShop(){
   const themes = SHOP_ITEMS.filter(i => i.type === 'theme');
   const titles = SHOP_ITEMS.filter(i => i.type === 'title');
+  const frames = SHOP_ITEMS.filter(i => i.type === 'frame');
 
   let html = `
     <div class="sh">SHOP</div>
@@ -1157,6 +1172,28 @@ function renderShop(){
   });
   html += `</div>`;
 
+  html += `<div class="ach-card"><div class="ach-title">Frames</div>`;
+  frames.forEach(item => {
+    const owned = S.inventory.includes(item.id);
+    const equipped = S.equippedFrame === item.id;
+    html += `
+      <div class="inv-item">
+        <div>
+          <div class="inv-item-name">${item.name} ${equipped?'(Active)':''}</div>
+          <div style="font-size:11px;color:var(--txt2)">${item.desc}</div>
+        </div>
+        <div>
+          <span style="color:var(--gold);font-weight:600;">${item.price} XP</span>
+          ${owned ? 
+            `<button class="btn btn-blue" style="padding:6px 12px;font-size:12px;width:auto;" onclick="equipItem('${item.id}')">${equipped?'Unequip':'Equip'}</button>` :
+            `<button class="btn btn-gold" style="padding:6px 12px;font-size:12px;width:auto;" onclick="buyItem('${item.id}')">Buy</button>`
+          }
+        </div>
+      </div>
+    `;
+  });
+  html += `</div>`;
+
   document.getElementById('page-shop').innerHTML = html;
 }
 
@@ -1168,7 +1205,7 @@ function buyItem(itemId){
   S.user.xp -= item.price;
   S.inventory.push(itemId);
   saveUserToFirebase();
-  showToast(`Purchased: ${item.name}`, '🛒');
+  showToast(`Purchased: ${item.name || item.data}`, '🛒');
   render('shop');
 }
 
@@ -1179,6 +1216,8 @@ function equipItem(itemId){
     S.equippedTheme = (S.equippedTheme === itemId) ? null : itemId;
   } else if(item.type === 'title'){
     S.equippedTitle = (S.equippedTitle === itemId) ? null : itemId;
+  } else if(item.type === 'frame'){
+    S.equippedFrame = (S.equippedFrame === itemId) ? null : itemId;
   }
   saveUserToFirebase();
   applyEquippedTheme();
