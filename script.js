@@ -3,7 +3,7 @@ function t(key) { return key; }
 
 // ─── FIREBASE ────────────────────────────────────────────────────────────────
 const firebaseConfig = {
-  apiKey: "AIzaSyCjPbqIGxokUxUAe-CpexWIbhf62C1il68",
+  apiKey: "AIzaSyCjPbqIGxokUxUAe-CpexWIbhf62C1il68", //Protected
   authDomain: "ironpull.firebaseapp.com",
   databaseURL: "https://ironpull-default-rtdb.firebaseio.com",
   projectId: "ironpull",
