@@ -35,10 +35,19 @@ const SHOP_ITEMS = [
   { id:'title-beast', name:'Beast Mode', desc:'Title: Beast Mode', price:150, type:'title', data:'🔥 Beast Mode' },
   { id:'title-legend', name:'Living Legend', desc:'Title: Living Legend', price:250, type:'title', data:'👑 Living Legend' },
   { id:'title-mythic', name:'Mythic Puller', desc:'Title: Mythic Puller', price:500, type:'title', data:'⚡ Mythic Puller' },
-  // Frames
-  { id:'frame-gold', name:'Gold Frame', desc:'Shiny gold border', price:300, type:'frame', data:'frame-gold' },
-  { id:'frame-neon', name:'Neon Frame', desc:'Glowing neon', price:400, type:'frame', data:'frame-neon' },
-  { id:'frame-lightning', name:'Lightning Frame', desc:'Electric effect', price:500, type:'frame', data:'frame-lightning' },
+  // Frames — 12 unique designs
+  { id:'frame-iron',     name:'Iron Will',      desc:'Solid steel ring. No flash, just strength.',       price:150,  type:'frame', data:'frame-iron',     emoji:'⚙️' },
+  { id:'frame-gold',     name:'Gold Standard',  desc:'Classic warm gold glow. Always elite.',            price:300,  type:'frame', data:'frame-gold',     emoji:'🥇' },
+  { id:'frame-champion', name:'Champion',       desc:'Double gold ring — reserved for winners.',         price:400,  type:'frame', data:'frame-champion', emoji:'🏆' },
+  { id:'frame-fire',     name:'On Fire',        desc:'Animated flame pulse. Pure aggression.',           price:350,  type:'frame', data:'frame-fire',     emoji:'🔥' },
+  { id:'frame-ice',      name:'Ice Cold',       desc:'Shimmering arctic blue. Cool under pressure.',     price:350,  type:'frame', data:'frame-ice',      emoji:'❄️' },
+  { id:'frame-neon',     name:'Neon',           desc:'Cyberpunk green glow. Stand out in the dark.',     price:400,  type:'frame', data:'frame-neon',     emoji:'⚡' },
+  { id:'frame-lightning',name:'Lightning',      desc:'Fast electric pulse. Always striking.',            price:450,  type:'frame', data:'frame-lightning', emoji:'🌩️' },
+  { id:'frame-shadow',   name:'Dark Matter',    desc:'Deep purple smoke. Mysterious and powerful.',      price:350,  type:'frame', data:'frame-shadow',   emoji:'🌑' },
+  { id:'frame-diamond',  name:'Diamond',        desc:'Triple-ring crystalline. Pure and rare.',          price:500,  type:'frame', data:'frame-diamond',  emoji:'💎' },
+  { id:'frame-mythic',   name:'Mythic',         desc:'Shifts between purple and gold. Legendary.',       price:600,  type:'frame', data:'frame-mythic',   emoji:'🔮' },
+  { id:'frame-rainbow',  name:'Rainbow',        desc:'Full color cycle animation. Unmissable.',          price:550,  type:'frame', data:'frame-rainbow',  emoji:'🌈' },
+  { id:'frame-galaxy',   name:'Galaxy',         desc:'Deep space hues with slow nebula pulse.',          price:700,  type:'frame', data:'frame-galaxy',   emoji:'🌌' },
 ];
 
 // ─── STATE ──────────────────────────────────────────────────────────────────
