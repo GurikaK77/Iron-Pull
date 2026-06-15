@@ -3,11 +3,11 @@ function t(key) { return key; }
 
 // ─── FIREBASE ────────────────────────────────────────────────────────────────
 const firebaseConfig = {
-  apiKey: "AIzaSyCjPbqIGxokUxUAe-CpexWIbhf62C1il68", //Protected
-  authDomain: "ironpull.firebaseapp.com",
-  databaseURL: "https://ironpull-default-rtdb.firebaseio.com",
-  projectId: "ironpull",
-  storageBucket: "ironpull.firebasestorage.app",
+  apiKey: "AIzaSyCjPbqIGxokUxUAe-CpexWIbhf62C1il68",
+  authDomain: "ironpush.firebaseapp.com",
+  databaseURL: "https://ironpull-default-rtdb.firebaseio.com/", 
+  projectId: "ironpush",
+  storageBucket: "ironpush.firebasestorage.app",
   messagingSenderId: "883044066447",
   appId: "1:883044066447:web:979b1a600c480377a17cfa"
 };
@@ -34,20 +34,11 @@ const SHOP_ITEMS = [
   { id:'title-iron', name:'Iron Warrior', desc:'Title: Iron Warrior', price:100, type:'title', data:'🦾 Iron Warrior' },
   { id:'title-beast', name:'Beast Mode', desc:'Title: Beast Mode', price:150, type:'title', data:'🔥 Beast Mode' },
   { id:'title-legend', name:'Living Legend', desc:'Title: Living Legend', price:250, type:'title', data:'👑 Living Legend' },
-  { id:'title-mythic', name:'Mythic Puller', desc:'Title: Mythic Puller', price:500, type:'title', data:'⚡ Mythic Puller' },
-  // Frames — 12 unique designs
-  { id:'frame-iron',     name:'Iron Will',      desc:'Solid steel ring. No flash, just strength.',       price:150,  type:'frame', data:'frame-iron',     emoji:'⚙️' },
-  { id:'frame-gold',     name:'Gold Standard',  desc:'Classic warm gold glow. Always elite.',            price:300,  type:'frame', data:'frame-gold',     emoji:'🥇' },
-  { id:'frame-champion', name:'Champion',       desc:'Double gold ring — reserved for winners.',         price:400,  type:'frame', data:'frame-champion', emoji:'🏆' },
-  { id:'frame-fire',     name:'On Fire',        desc:'Animated flame pulse. Pure aggression.',           price:350,  type:'frame', data:'frame-fire',     emoji:'🔥' },
-  { id:'frame-ice',      name:'Ice Cold',       desc:'Shimmering arctic blue. Cool under pressure.',     price:350,  type:'frame', data:'frame-ice',      emoji:'❄️' },
-  { id:'frame-neon',     name:'Neon',           desc:'Cyberpunk green glow. Stand out in the dark.',     price:400,  type:'frame', data:'frame-neon',     emoji:'⚡' },
-  { id:'frame-lightning',name:'Lightning',      desc:'Fast electric pulse. Always striking.',            price:450,  type:'frame', data:'frame-lightning', emoji:'🌩️' },
-  { id:'frame-shadow',   name:'Dark Matter',    desc:'Deep purple smoke. Mysterious and powerful.',      price:350,  type:'frame', data:'frame-shadow',   emoji:'🌑' },
-  { id:'frame-diamond',  name:'Diamond',        desc:'Triple-ring crystalline. Pure and rare.',          price:500,  type:'frame', data:'frame-diamond',  emoji:'💎' },
-  { id:'frame-mythic',   name:'Mythic',         desc:'Shifts between purple and gold. Legendary.',       price:600,  type:'frame', data:'frame-mythic',   emoji:'🔮' },
-  { id:'frame-rainbow',  name:'Rainbow',        desc:'Full color cycle animation. Unmissable.',          price:550,  type:'frame', data:'frame-rainbow',  emoji:'🌈' },
-  { id:'frame-galaxy',   name:'Galaxy',         desc:'Deep space hues with slow nebula pulse.',          price:700,  type:'frame', data:'frame-galaxy',   emoji:'🌌' },
+  { id:'title-mythic', name:'Mythic Pusher', desc:'Title: Mythic Pusher', price:500, type:'title', data:'⚡ Mythic Pusher' },
+  // Frames
+  { id:'frame-gold', name:'Gold Frame', desc:'Shiny gold border', price:300, type:'frame', data:'frame-gold' },
+  { id:'frame-neon', name:'Neon Frame', desc:'Glowing neon', price:400, type:'frame', data:'frame-neon' },
+  { id:'frame-lightning', name:'Lightning Frame', desc:'Electric effect', price:500, type:'frame', data:'frame-lightning' },
 ];
 
 // ─── STATE ──────────────────────────────────────────────────────────────────
@@ -295,7 +286,7 @@ function generateDailyQuests(){
   const today = todayStr();
   const possible = [
     { id: 'sets5', desc: 'Complete 5 sets today', goal: 5, reward: 10 },
-    { id: 'rep100', desc: 'Reach 100 total pull-ups today', goal: 100, reward: 20 },
+    { id: 'rep100', desc: 'Reach 100 total push-ups today', goal: 100, reward: 20 },
     { id: 'early', desc: 'Finish a workout before 10 AM', goal: 1, reward: 15 },
     { id: 'streak3', desc: 'Extend your streak to 3 days', goal: 3, reward: 30 },
     { id: 'rest', desc: 'Take a rest day', goal: 1, reward: 5 },
@@ -414,7 +405,7 @@ function renderHome(){
   let statusHTML='';
   if(entry?.type==='workout'){
     const timeStr=formatTime(entry.timestamp);
-    statusHTML=`<div class="tag tag-g">✓ Completed at ${timeStr} — ${entry.total} pull-ups</div>`;
+    statusHTML=`<div class="tag tag-g">✓ Completed at ${timeStr} — ${entry.total} push-ups</div>`;
   }
   else if(entry?.type==='rest'){
     const timeStr=formatTime(entry.timestamp);
@@ -596,7 +587,7 @@ function renderModalSets(){
       `).join('')}
     </div>
     <button class="btn btn-dark" onclick="addSet()" style="margin-bottom:12px">+ Add Set</button>
-    <div class="set-total">Total: <span id="mod-tot">${total}</span> pull-ups</div>
+    <div class="set-total">Total: <span id="mod-tot">${total}</span> push-ups</div>
     <button class="btn btn-gold" onclick="saveWorkout()">💾 Save Workout</button>
     <button class="btn btn-blue" onclick="saveRestFromModal()">💤 Mark as Rest Day</button>
     ${existing?`<button class="btn btn-dark" onclick="deleteLog()">🗑 Remove Log</button>`:''}
@@ -717,9 +708,9 @@ function renderStats(){
     <div class="ss">Full performance breakdown</div>
     <div class="today-hero">
       <div class="today-hero-n">${todayReps}</div>
-      <div class="today-hero-l">Today's Pull-Ups</div>
+      <div class="today-hero-l">Today's Push-Ups</div>
     </div>
-    <div class="hero"><div class="hero-n">${tr.toLocaleString()}</div><div class="hero-l">Total Pull-Ups</div></div>
+    <div class="hero"><div class="hero-n">${tr.toLocaleString()}</div><div class="hero-l">Total Push-Ups</div></div>
     <div class="sg">
       <div class="sgc"><div class="sgc-v">${wd.length}</div><div class="sgc-l">Workouts</div></div>
       <div class="sgc"><div class="sgc-v">${rd.length}</div><div class="sgc-l">Rest Days</div></div>
@@ -750,14 +741,14 @@ function getAchievements(){
   return [
     { id:'first', icon:'🥇', name:'First Workout', desc:'Complete 1 workout', max:1, current: wd >=1 ? 1 : 0, unlocked: wd >=1, xp: 10 },
     { id:'streak7', icon:'🔥', name:'7-Day Streak', desc:'Maintain a streak of 7 days', max:7, current: Math.min(st,7), unlocked: st >=7, xp: 40 },
-    { id:'centurion', icon:'💪', name:'Pull-Up Centurion', desc:'Reach 1,000 total pull-ups', max:1000, current: Math.min(tr,1000), unlocked: tr >=1000, xp: 100 },
-    { id:'ironman', icon:'⚡', name:'Iron Man', desc:'10,000 total pull-ups', max:10000, current: Math.min(tr,10000), unlocked: tr >=10000, xp: 400 },
+    { id:'centurion', icon:'💪', name:'Push-Up Centurion', desc:'Reach 1,000 total push-ups', max:1000, current: Math.min(tr,1000), unlocked: tr >=1000, xp: 100 },
+    { id:'ironman', icon:'⚡', name:'Iron Man', desc:'10,000 total push-ups', max:10000, current: Math.min(tr,10000), unlocked: tr >=10000, xp: 400 },
     { id:'dedicated', icon:'🏋️', name:'Dedicated', desc:'Complete 10 workouts', max:10, current: Math.min(wd,10), unlocked: wd >=10, xp: 30 },
     { id:'consistent', icon:'🎯', name:'Consistent', desc:'Hit daily target 5 times', max:5, current: Math.min(hitDays,5), unlocked: hitDays >=5, xp: 50 },
     { id:'champion', icon:'🏆', name:'Challenge Champion', desc:`Complete your challenge (${goal} days)`, max:goal, current: Math.min(wd,goal), unlocked: wd >= goal, xp: 200 },
-    { id:'heavy', icon:'🦾', name:'Heavy Lifter', desc:'Best day: 200 pull-ups', max:200, current: Math.min(bd,200), unlocked: bd >=200, xp: 60 },
+    { id:'heavy', icon:'🦾', name:'Heavy Lifter', desc:'Best day: 200 push-ups', max:200, current: Math.min(bd,200), unlocked: bd >=200, xp: 60 },
     { id:'halfway', icon:'🌟', name:'Halfway Hero', desc:'Reach 50% challenge completion', unlocked: wd >= goal/2, xp: 40 },
-    { id:'legend', icon:'👑', name:'IronPull Legend', desc:'Unlock all achievements', unlocked: false, xp: 1000 }
+    { id:'legend', icon:'👑', name:'IronPush Legend', desc:'Unlock all achievements', unlocked: false, xp: 1000 }
   ];
 }
 
@@ -918,14 +909,14 @@ function adminClear(){
   document.getElementById('admin-uid-input').value = '';
 }
 
-// ─── FRIENDS (with Today's Pull‑Ups & Frame) ──────────────────────────────
+// ─── FRIENDS (with Today's Push‑Ups & Frame) ──────────────────────────────
 function renderFriends(){
   const friends = S.friends || {};
   const friendList = Object.entries(friends);
 
   document.getElementById('page-friends').innerHTML=`
     <div class="sh">FRIENDS</div>
-    <div class="ss">Your pull-up crew</div>
+    <div class="ss">Your push-up crew</div>
     <div class="fg">
       <label class="fl">Add Friend by UID</label>
       <input class="fi" id="friend-uid-input" placeholder="Friend's User ID">
@@ -953,7 +944,7 @@ function renderFriends(){
       const detailEl = document.getElementById('frd-'+uid);
       if(detailEl){
         if(val && val.type === 'workout'){
-          detailEl.innerHTML = `Today: <strong style="color:var(--gold)">${val.total}</strong> pull-ups`;
+          detailEl.innerHTML = `Today: <strong style="color:var(--gold)">${val.total}</strong> push-ups`;
         } else if(val && val.type === 'rest'){
           detailEl.textContent = 'Rest day';
         } else {
@@ -1048,9 +1039,9 @@ function showFriendView(uid, f){
     </div>
     <div class="today-hero">
       <div class="today-hero-n">${todayReps}</div>
-      <div class="today-hero-l">Today's Pull-Ups</div>
+      <div class="today-hero-l">Today's Push-Ups</div>
     </div>
-    <div class="hero"><div class="hero-n">${total.toLocaleString()}</div><div class="hero-l">Total Pull-Ups</div></div>
+    <div class="hero"><div class="hero-n">${total.toLocaleString()}</div><div class="hero-l">Total Push-Ups</div></div>
     <div class="sg">
       <div class="sgc"><div class="sgc-v">${w.length}</div><div class="sgc-l">Workouts</div></div>
       <div class="sgc"><div class="sgc-v">${r.length}</div><div class="sgc-l">Rest Days</div></div>
@@ -1233,31 +1224,78 @@ function equipItem(itemId){
   render(S.curPage === 'shop' ? 'shop' : 'prof');
 }
 
-// ─── APP ICON GENERATION (PWA) ────────────────────────────────────────────
+// ─── APP ICON GENERATION (PWA) — Gaming Style ─────────────────────────────
 (function(){
   const c=document.createElement('canvas');
   c.width=512;c.height=512;
   const x=c.getContext('2d');
-  x.fillStyle='#07070f';
-  x.beginPath();x.roundRect(0,0,512,512,100);x.fill();
+
+  // Ultra-dark background
+  x.fillStyle='#06060e';
+  x.beginPath();x.roundRect(0,0,512,512,90);x.fill();
+
+  // Subtle hex grid overlay
+  x.strokeStyle='rgba(100,60,220,.1)';x.lineWidth=1;
+  for(let i=-32;i<544;i+=36){
+    x.beginPath();x.moveTo(i,0);x.lineTo(i,512);x.stroke();
+    x.beginPath();x.moveTo(0,i);x.lineTo(512,i);x.stroke();
+  }
+
+  // Outer glow burst behind figure
+  const burst=x.createRadialGradient(256,250,30,256,250,210);
+  burst.addColorStop(0,'rgba(0,200,255,.18)');
+  burst.addColorStop(1,'rgba(0,200,255,0)');
+  x.fillStyle=burst;x.fillRect(0,0,512,512);
+
+  // Outer ring — electric purple → neon cyan
   const rg=x.createLinearGradient(60,60,452,452);
-  rg.addColorStop(0,'#c8a84b');rg.addColorStop(1,'#f5dfa0');
-  x.strokeStyle=rg;x.lineWidth=36;x.lineCap='round';
-  x.beginPath();x.arc(256,256,180,-Math.PI*0.6,Math.PI*1.2);x.stroke();
-  x.strokeStyle='#f5dfa0';x.lineWidth=22;x.lineCap='round';x.lineJoin='round';
-  x.beginPath();x.moveTo(156,168);x.lineTo(356,168);x.stroke();
-  x.beginPath();x.moveTo(200,168);x.lineTo(256,220);x.lineTo(312,168);x.stroke();
-  x.beginPath();x.moveTo(256,220);x.lineTo(256,330);x.stroke();
-  x.beginPath();x.arc(256,152,28,0,Math.PI*2);x.fillStyle='#f5dfa0';x.fill();
-  x.strokeStyle='#f5dfa0';
-  x.beginPath();x.moveTo(256,330);x.lineTo(226,385);x.lineTo(248,420);x.stroke();
-  x.beginPath();x.moveTo(256,330);x.lineTo(286,385);x.lineTo(264,420);x.stroke();
-  x.fillStyle=rg;x.font='bold 68px sans-serif';x.textAlign='center';x.textBaseline='bottom';
-  x.fillText('IRONPULL',256,494);
+  rg.addColorStop(0,'#a855f7');rg.addColorStop(.45,'#06b6d4');rg.addColorStop(1,'#00ff88');
+  x.strokeStyle=rg;x.lineWidth=26;x.lineCap='round';
+  x.globalAlpha=0.9;
+  x.beginPath();x.arc(256,240,184,-Math.PI*0.68,Math.PI*1.12);x.stroke();
+  x.globalAlpha=1;
+
+  // Figure glow
+  x.shadowColor='#00e5ff';x.shadowBlur=22;
+
+  // Push-up figure — neon cyan
+  const fc='#00e5ff';
+  x.strokeStyle=fc;x.lineWidth=20;x.lineCap='round';x.lineJoin='round';
+
+  // Head
+  x.beginPath();x.arc(112,206,28,0,Math.PI*2);x.fillStyle=fc;x.fill();
+
+  // Body
+  x.beginPath();x.moveTo(140,230);x.lineTo(382,250);x.stroke();
+
+  // Front arm
+  x.beginPath();x.moveTo(168,236);x.lineTo(163,356);x.stroke();
+
+  // Rear arm
+  x.beginPath();x.moveTo(354,248);x.lineTo(357,356);x.stroke();
+
+  // Legs
+  x.beginPath();x.moveTo(382,250);x.lineTo(418,310);x.lineTo(443,356);x.stroke();
+
+  // Contact dots
+  x.fillStyle=fc;x.shadowBlur=14;
+  [[163,356],[357,356],[443,356]].forEach(([px,py])=>{x.beginPath();x.arc(px,py,9,0,Math.PI*2);x.fill()});
+
+  // Ground line
+  x.strokeStyle='rgba(0,229,255,.25)';x.lineWidth=4;x.shadowBlur=8;
+  x.beginPath();x.moveTo(88,360);x.lineTo(446,360);x.stroke();
+  x.shadowBlur=0;
+
+  // "IRONPUSH" gaming gradient text
+  const tg=x.createLinearGradient(80,456,432,496);
+  tg.addColorStop(0,'#a855f7');tg.addColorStop(.5,'#06b6d4');tg.addColorStop(1,'#00ff88');
+  x.fillStyle=tg;x.font='bold 60px sans-serif';
+  x.textAlign='center';x.textBaseline='bottom';
+  x.fillText('IRONPUSH',256,498);
   const url=c.toDataURL('image/png');
   document.getElementById('apple-icon').href=url;
   document.getElementById('favicon').href=url;
-  const mf={name:'IronPull',short_name:'IronPull',start_url:'.',display:'standalone',background_color:'#07070f',theme_color:'#07070f',icons:[{src:url,sizes:'512x512',type:'image/png'}]};
+  const mf={name:'IronPush',short_name:'IronPush',start_url:'.',display:'standalone',background_color:'#07070f',theme_color:'#07070f',icons:[{src:url,sizes:'512x512',type:'image/png'}]};
   const blob=new Blob([JSON.stringify(mf)],{type:'application/manifest+json'});
   const ml=document.createElement('link');ml.rel='manifest';ml.href=URL.createObjectURL(blob);
   document.head.appendChild(ml);
