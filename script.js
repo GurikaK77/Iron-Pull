@@ -4,8 +4,8 @@ function t(key) { return key; }
 // ─── FIREBASE ────────────────────────────────────────────────────────────────
 const firebaseConfig = {
   apiKey: "AIzaSyCjPbqIGxokUxUAe-CpexWIbhf62C1il68",
-  authDomain: "ironpush.firebaseapp.com",
-  databaseURL: "https://ironpull-default-rtdb.firebaseio.com/", 
+  authDomain: "ironpull.firebaseapp.com",
+  databaseURL: "https://ironpull-default-rtdb.firebaseio.com", 
   projectId: "ironpush",
   storageBucket: "ironpush.firebasestorage.app",
   messagingSenderId: "883044066447",
