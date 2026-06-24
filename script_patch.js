@@ -1,4 +1,4 @@
-/* IronPush — script_patch.js  (script.js-ის შემდეგ) */
+/* IronPush — script_patch.js */
 
 /* ─── 0. CSS ─────────────────────────────────────────────── */
 (function(){const s=document.createElement('style');s.textContent=`
@@ -20,9 +20,9 @@
 .frame-mythic  {border:0!important;animation:mythicShift 2.8s ease-in-out infinite}
 @keyframes mythicShift{0%,100%{box-shadow:0 0 0 3px var(--bg,#07070f),0 0 0 6px #a855f7,0 0 22px rgba(168,85,247,.65)}50%{box-shadow:0 0 0 3px var(--bg,#07070f),0 0 0 6px #d4af37,0 0 24px rgba(212,175,55,.6)}}
 .frame-rainbow {border:0!important;animation:rbFrame 3s linear infinite}
-@keyframes rbFrame{0%{box-shadow:0 0 0 3px var(--bg,#07070f),0 0 0 6px #ff0000,0 0 18px rgba(255,0,0,.5)}14%{box-shadow:0 0 0 3px var(--bg,#07070f),0 0 0 6px #ff8800,0 0 18px rgba(255,136,0,.5)}28%{box-shadow:0 0 0 3px var(--bg,#07070f),0 0 0 6px #ffee00,0 0 18px rgba(255,238,0,.5)}42%{box-shadow:0 0 0 3px var(--bg,#07070f),0 0 0 6px #00dd00,0 0 18px rgba(0,221,0,.5)}57%{box-shadow:0 0 0 3px var(--bg,#07070f),0 0 0 6px #0088ff,0 0 18px rgba(0,136,255,.5)}71%{box-shadow:0 0 0 3px var(--bg,#07070f),0 0 0 6px #aa00ff,0 0 18px rgba(170,0,255,.5)}85%{box-shadow:0 0 0 3px var(--bg,#07070f),0 0 0 6px #ff0088,0 0 18px rgba(255,0,136,.5)}100%{box-shadow:0 0 0 3px var(--bg,#07070f),0 0 0 6px #ff0000,0 0 18px rgba(255,0,0,.5)}}
+@keyframes rbFrame{0%{box-shadow:0 0 0 3px var(--bg,#07070f),0 0 0 6px #ff0000,0 0 18px rgba(255,0,0,.5)}25%{box-shadow:0 0 0 3px var(--bg,#07070f),0 0 0 6px #00dd00,0 0 18px rgba(0,221,0,.5)}50%{box-shadow:0 0 0 3px var(--bg,#07070f),0 0 0 6px #0088ff,0 0 18px rgba(0,136,255,.5)}75%{box-shadow:0 0 0 3px var(--bg,#07070f),0 0 0 6px #aa00ff,0 0 18px rgba(170,0,255,.5)}100%{box-shadow:0 0 0 3px var(--bg,#07070f),0 0 0 6px #ff0000,0 0 18px rgba(255,0,0,.5)}}
 .frame-galaxy  {border:0!important;animation:galaxyPulse 3.5s ease-in-out infinite}
-@keyframes galaxyPulse{0%,100%{box-shadow:0 0 0 3px var(--bg,#07070f),0 0 0 6px #4f46e5,0 0 24px rgba(79,70,229,.5)}33%{box-shadow:0 0 0 3px var(--bg,#07070f),0 0 0 6px #7c3aed,0 0 32px rgba(124,58,237,.7)}66%{box-shadow:0 0 0 3px var(--bg,#07070f),0 0 0 6px #2563eb,0 0 26px rgba(37,99,235,.55)}}
+@keyframes galaxyPulse{0%,100%{box-shadow:0 0 0 3px var(--bg,#07070f),0 0 0 6px #4f46e5,0 0 24px rgba(79,70,229,.5)}50%{box-shadow:0 0 0 3px var(--bg,#07070f),0 0 0 6px #7c3aed,0 0 32px rgba(124,58,237,.7)}}
 .p-av.frame-iron,.p-av.frame-gold,.p-av.frame-champion,.p-av.frame-fire,.p-av.frame-ice,.p-av.frame-neon,.p-av.frame-lightning,.p-av.frame-shadow,.p-av.frame-diamond,.p-av.frame-mythic,.p-av.frame-rainbow,.p-av.frame-galaxy{border:none!important}
 .p-av.frame-iron{box-shadow:0 0 0 4px var(--bg,#07070f),0 0 0 8px #8a8a9a!important}
 .p-av.frame-gold{box-shadow:0 0 0 4px var(--bg,#07070f),0 0 0 8px #d4af37,0 0 26px rgba(212,175,55,.6)!important}
@@ -113,7 +113,7 @@ const IPLang={
 };
 document.addEventListener('DOMContentLoaded',()=>IPLang.apply());
 
-/* ─── 2. AUTH TABS ───────────────────────────────────────── */
+/* ─── 2. AUTH ────────────────────────────────────────────── */
 function authTab(t){
   const si=t==='si';
   ['tab-si','tab-su'].forEach((id,i)=>document.getElementById(id)?.classList.toggle('active',i===0?si:!si));
@@ -151,29 +151,15 @@ function _ipShowLang(){
   if(a.classList.contains('hidden'))_ipShowLang();
 })();
 
-/* ─── 4. BLACK PAGES FIX ─────────────────────────────────
-   Root cause: auth.onAuthStateChanged(null) removes .active
-   from ALL page divs. After login, render() sets innerHTML
-   but never re-adds .active → page has content but is hidden.
-
-   Three-part fix:
-   A) render() always activates the page after calling original
-   B) go() retries render when S.user becomes available
-   C) After login, watch for S.user and force-refresh the page
-────────────────────────────────────────────────────────── */
-
-// A: render() always activates target page
+/* ─── 4. BLACK PAGES FIX (3-layer) ──────────────────────── */
 const _baseRender=window.render;
 window.render=function(p){
-  // Menu page (not in original render)
   if(p==='menu'){
     _ipShowPage('menu');
     if(typeof S!=='undefined'&&S.user)renderMenu();
     return;
   }
-  // Call original (it renders the content, checks S.user itself)
   if(typeof _baseRender==='function')_baseRender.call(this,p);
-  // ALWAYS ensure the page is visible after render attempt
   _ipShowPage(p);
 };
 function _ipShowPage(p){
@@ -184,23 +170,14 @@ function _ipShowPage(p){
     pg.classList.add('active');
   }
 }
-
-// B: go() retries if S.user not ready yet
 const _baseGo=window.go;
 window.go=function(page){
   if(typeof _baseGo==='function')_baseGo.call(this,page);
-  // If user data not loaded yet, retry when ready
   if(typeof S!=='undefined'&&!S.user){
     let n=0;
-    const t=setInterval(()=>{
-      n++;
-      if(S&&S.user){clearInterval(t);if(typeof _baseGo==='function')_baseGo.call(window,page);}
-      else if(n>100)clearInterval(t);
-    },150);
+    const t=setInterval(()=>{n++;if(S&&S.user){clearInterval(t);if(typeof _baseGo==='function')_baseGo.call(window,page);}else if(n>100)clearInterval(t);},150);
   }
 };
-
-// C: watch auth→hidden, then force-refresh when S.user ready
 (function watchLoginRefresh(){
   const a=document.getElementById('auth-screen');
   if(!a){document.addEventListener('DOMContentLoaded',watchLoginRefresh);return}
@@ -208,26 +185,14 @@ window.go=function(page){
   new MutationObserver(()=>{
     const hidden=a.classList.contains('hidden');
     if(hidden&&wasVisible){
-      // Just logged in — wait for S.user then refresh current page
       let n=0;
-      const t=setInterval(()=>{
-        n++;
-        if(typeof S!=='undefined'&&S.user){
-          clearInterval(t);
-          const p=S.curPage||'home';
-          if(typeof _baseGo==='function')_baseGo.call(window,p);
-        }else if(n>150)clearInterval(t);
-      },100);
+      const t=setInterval(()=>{n++;if(typeof S!=='undefined'&&S.user){clearInterval(t);const p=S.curPage||'home';if(typeof _baseGo==='function')_baseGo.call(window,p);}else if(n>150)clearInterval(t);},100);
     }
     wasVisible=!hidden;
   }).observe(a,{attributes:true,attributeFilter:['class']});
 })();
 
-/* ─── 5. DATA LEAK FIX ───────────────────────────────────
-   When signing into a new account, old S.logs/friends etc.
-   would still be visible until Firebase loads new data.
-   Fix: reset S before each sync.
-────────────────────────────────────────────────────────── */
+/* ─── 5. DATA LEAK FIX ───────────────────────────────────── */
 const _baseSyncFB=window.syncFromFirebase;
 window.syncFromFirebase=function(){
   if(typeof S!=='undefined'){
@@ -285,7 +250,7 @@ window.renderShop=function(){
   document.getElementById('page-shop').innerHTML=html;
 };
 
-/* ─── 10. INVENTORY FRAMES TAB ───────────────────────────── */
+/* ─── 10. INVENTORY FRAMES ───────────────────────────────── */
 const _oOI=window.openInventory;
 window.openInventory=function(){
   if(typeof _oOI==='function')_oOI.call(this);
@@ -368,15 +333,21 @@ function renderMenu(){
   `;
   setTimeout(_ipApplyFrames,50);
 }
+
+/* ─── JOURNAL SAVE FIX ───────────────────────────────────────
+   KEY FIX: S.user.journal-ს ვანახლებთ და შემდეგ saveUserToFirebase()
+   ვიძახებთ — ეს journal-ს ყოველ სხვა save-ზეც ინახავს.
+   script.js-ში saveUserToFirebase()-ს დაემატა: journal: S.user.journal || ''
+─────────────────────────────────────────────────────────── */
 function IPSaveJournal(){
   const ta=document.getElementById('nb-ta');
   if(!ta||!S.user||!S.uid)return;
-  S.user.journal=ta.value;
-  db.ref('users/'+S.uid+'/journal').set(S.user.journal);
+  S.user.journal=ta.value;    // 1. update memory
+  saveUserToFirebase();        // 2. full save (includes journal now)
   showToast(IPLang.t('nb_saved'),'📔');
 }
 
-/* ─── 12. renderProf OVERRIDE (frame + bio editable) ─────── */
+/* ─── 12. renderProf OVERRIDE ────────────────────────────── */
 window.renderProf=function(){
   const u=S.user;if(!u)return;
   S.editMode=S.editMode||false;
@@ -475,4 +446,4 @@ window.showFriendView=function(uid,f){
 };
 
 document.addEventListener('DOMContentLoaded',()=>setTimeout(_ipApplyFrames,800));
-console.log('✅ IronPush patch — black pages fix(3-layer), data leak fix, menu, notebook');
+console.log('✅ IronPush patch — journal fix, black pages(3-layer), data leak, menu, notebook');
