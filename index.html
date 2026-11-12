@@ -3,15 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>IronPull</title>
+  <title>IronPush</title>
   <link id="apple-icon" rel="apple-touch-icon">
   <link id="favicon" rel="icon" type="image/png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="IronPull">
+  <meta name="apple-mobile-web-app-title" content="IronPush">
   <meta name="theme-color" content="#07070f">
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <!-- Firebase SDKs -->
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -19,137 +18,142 @@
 </head>
 <body>
   <div id="app">
-    <!-- AUTH SCREEN (Redesigned) -->
+
+    <!-- ═════════ AUTH ═════════ -->
     <div class="auth" id="auth-screen">
+      <div class="auth-lang-switch">
+        <button class="auth-lang-btn" data-lang="en" onclick="setLang('en')">EN</button>
+        <button class="auth-lang-btn" data-lang="ka" onclick="setLang('ka')">ქარ</button>
+      </div>
       <div class="auth-overlay">
-        <div class="auth-logo">IRONPULL</div>
-        <div class="auth-tag">Elite Pull-Up Tracker</div>
+        <div class="auth-logo">IRONPUSH</div>
+        <div class="auth-tag" data-i18n="tagline">Elite Pull-Up Tracker</div>
         <div class="auth-card">
           <button class="btn btn-google" onclick="authGoogleSignIn()">
-            <span class="google-icon">G</span> Sign in with Google
+            <span class="google-icon">G</span> <span data-i18n="google">Sign in with Google</span>
           </button>
-          <div class="auth-divider"><span>or</span></div>
+          <div class="auth-divider"><span data-i18n="or">or</span></div>
           <div class="fg">
-            <input class="fi" id="auth-email" type="email" placeholder="Email">
+            <input class="fi" id="auth-email" type="email" placeholder="Email" data-i18n-ph="email">
           </div>
           <div class="fg">
-            <input class="fi" id="auth-pass" type="password" placeholder="Password">
+            <input class="fi" id="auth-pass" type="password" placeholder="Password" data-i18n-ph="password">
           </div>
-          <button class="btn btn-gold" onclick="authSignIn()">Sign In</button>
-          <button class="btn btn-dark" onclick="authRegister()">Register</button>
-          <div class="auth-forgot" onclick="resetPassword()">Forgot password?</div>
+          <button class="btn btn-gold" onclick="authSignIn()" data-i18n="signin">Sign In</button>
+          <button class="btn btn-dark" onclick="authRegister()" data-i18n="register">Register</button>
+          <div class="auth-forgot" onclick="resetPassword()" data-i18n="forgot">Forgot password?</div>
         </div>
       </div>
     </div>
 
-    <!-- ONBOARDING (unchanged) -->
+    <!-- ═════════ ONBOARDING ═════════ -->
     <div class="ob hidden" id="ob">
-      <!-- იგივე, რაც იყო -->
-      <div class="ob-logo">IRONPULL</div>
-      <div class="ob-tag">Elite Pull-Up Tracker</div>
+      <div class="ob-logo">IRONPUSH</div>
+      <div class="ob-tag" data-i18n="tagline">Elite Pull-Up Tracker</div>
       <div class="ob-dots" id="ob-dots">
         <div class="ob-dot active"></div><div class="ob-dot"></div><div class="ob-dot"></div>
       </div>
       <div class="ob-step active" id="ob-s1">
-        <div class="ob-h">WHO ARE YOU?</div>
-        <div class="ob-sub">Set up your profile.</div>
-        <div class="fg"><label class="fl">Your Name</label><input class="fi" id="ob-name" type="text" placeholder="e.g. Alex" maxlength="20"></div>
-        <div class="fg"><label class="fl">Age</label><input class="fi" id="ob-age" type="number" placeholder="e.g. 25" min="10" max="99"></div>
+        <div class="ob-h" data-i18n="ob_h1">WHO ARE YOU?</div>
+        <div class="ob-sub" data-i18n="ob_s1">Set up your profile.</div>
+        <div class="fg"><label class="fl" data-i18n="name">Your Name</label><input class="fi" id="ob-name" type="text" placeholder="e.g. Alex" data-i18n-ph="name_ph" maxlength="20"></div>
+        <div class="fg"><label class="fl" data-i18n="age">Age</label><input class="fi" id="ob-age" type="number" placeholder="e.g. 25" data-i18n-ph="age_ph" min="10" max="99"></div>
         <div class="spacer"></div>
-        <button class="btn btn-gold" onclick="obNext(1)">Continue →</button>
+        <button class="btn btn-gold" onclick="obNext(1)" data-i18n="continue">Continue →</button>
       </div>
       <div class="ob-step" id="ob-s2">
-        <div class="ob-h">YOUR CHALLENGE</div>
-        <div class="ob-sub">Set your challenge and daily target.</div>
-        <div class="fg"><label class="fl">Duration (days)</label><input class="fi" id="ob-days" type="number" value="30" min="7" max="365"></div>
-        <div class="fg"><label class="fl">Daily Target</label><input class="fi" id="ob-target" type="number" value="100" min="10" max="1000"></div>
-        <div class="fg"><label class="fl">Motivational Quote</label><input class="fi" id="ob-quote" type="text" placeholder="Pain is temporary..." maxlength="90"></div>
+        <div class="ob-h" data-i18n="ob_h2">YOUR CHALLENGE</div>
+        <div class="ob-sub" data-i18n="ob_s2">Set your challenge and daily target.</div>
+        <div class="fg"><label class="fl" data-i18n="duration">Duration (days)</label><input class="fi" id="ob-days" type="number" value="30" min="7" max="365"></div>
+        <div class="fg"><label class="fl" data-i18n="daily_target">Daily Target</label><input class="fi" id="ob-target" type="number" value="100" min="10" max="1000"></div>
+        <div class="fg"><label class="fl" data-i18n="motivation">Motivational Quote</label><input class="fi" id="ob-quote" type="text" placeholder="Pain is temporary..." data-i18n-ph="quote_ph" maxlength="90"></div>
         <div class="spacer"></div>
-        <button class="btn btn-gold" onclick="obNext(2)">Continue →</button>
-        <button class="btn btn-dark" onclick="obBack(1)">← Back</button>
+        <button class="btn btn-gold" onclick="obNext(2)" data-i18n="continue">Continue →</button>
+        <button class="btn btn-dark" onclick="obBack(1)" data-i18n="back">← Back</button>
       </div>
       <div class="ob-step" id="ob-s3">
-        <div class="ob-h">PICK YOUR AVATAR</div>
-        <div class="ob-sub">Choose an emoji avatar.</div>
+        <div class="ob-h" data-i18n="ob_h3">PICK YOUR AVATAR</div>
+        <div class="ob-sub" data-i18n="ob_s3">Choose an emoji avatar.</div>
         <div class="av-grid" id="av-grid"></div>
         <div class="spacer"></div>
-        <button class="btn btn-gold" onclick="obFinish()">🚀 Start Challenge</button>
-        <button class="btn btn-dark" onclick="obBack(2)">← Back</button>
+        <button class="btn btn-gold" onclick="obFinish()" data-i18n="start_challenge">🚀 Start Challenge</button>
+        <button class="btn btn-dark" onclick="obBack(2)" data-i18n="back">← Back</button>
       </div>
     </div>
 
-    <!-- PAGES -->
+    <!-- ═════════ PAGES ═════════ -->
     <div class="page active" id="page-home"></div>
     <div class="page" id="page-cal"></div>
     <div class="page" id="page-stats"></div>
     <div class="page" id="page-prof"></div>
     <div class="page" id="page-friends"></div>
     <div class="page" id="page-shop"></div>
-<div class="page" id="page-menu"></div>
+    <div class="page" id="page-menu"></div>
 
-    <!-- NAV -->
+    <!-- ═════════ NAV ═════════ -->
     <div class="nav">
       <button class="nb active" id="nb-home" onclick="go('home')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-        Home
+        <span data-i18n="nav_home">Home</span>
       </button>
       <button class="nb" id="nb-stats" onclick="go('stats')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-        Stats
+        <span data-i18n="nav_stats">Stats</span>
       </button>
       <div class="nav-fab-wrap">
         <div class="nav-fab" id="nb-cal" onclick="go('cal')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          LOG
+          <span data-i18n="nav_log">LOG</span>
         </div>
       </div>
       <button class="nb" id="nb-friends" onclick="go('friends')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
-        Friends
+        <span data-i18n="nav_friends">Friends</span>
       </button>
       <button class="nb" id="nb-menu" onclick="go('menu')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
-        Profile
+        <span data-i18n="nav_more">More</span>
       </button>
     </div>
 
-    <!-- LOG MODAL -->
+    <!-- ═════════ MODALS ═════════ -->
     <div class="overlay hidden" id="modal-overlay">
       <div class="modal" id="log-modal">
         <div class="mhandle"></div>
         <div id="modal-body"></div>
       </div>
     </div>
-
-    <!-- FRIEND VIEW -->
     <div class="friend-view hidden" id="friend-view"></div>
 
-    <!-- INVENTORY MODAL (with Frames tab) -->
     <div class="inventory-modal hidden" id="inventory-modal">
       <div class="inv-modal-content">
         <div class="inv-modal-header">
-          <h2>🎒 Inventory</h2>
+          <h2 data-i18n="inventory_title">🎒 Inventory</h2>
           <button class="inv-close-btn" onclick="closeInventory()">✕</button>
         </div>
         <div class="inv-tabs">
-          <button class="inv-tab active" data-tab="themes">Themes</button>
-          <button class="inv-tab" data-tab="titles">Titles</button>
-          <button class="inv-tab" data-tab="frames">Frames</button>
+          <button class="inv-tab active" data-tab="themes" data-i18n="themes">Themes</button>
+          <button class="inv-tab" data-tab="titles" data-i18n="titles">Titles</button>
+          <button class="inv-tab" data-tab="frames" data-i18n="frames">Frames</button>
         </div>
         <div class="inv-items-container" id="inv-items-container"></div>
       </div>
     </div>
 
-    <!-- TOAST CONTAINER -->
-    <div id="toast-container"></div>
+    <div class="inventory-modal hidden" id="instructions-modal">
+      <div class="inv-modal-content instructions-content">
+        <div class="inv-modal-header">
+          <h2 id="instr-title">📖 How to Use IronPush</h2>
+          <button class="inv-close-btn" onclick="closeInstructions()">✕</button>
+        </div>
+        <div id="instructions-body"></div>
+      </div>
+    </div>
 
+    <div id="toast-container"></div>
     <input type="file" id="avatar-upload" accept="image/*" style="display:none" onchange="handleAvatarUpload(this)">
   </div>
 
-  
-  
-  
   <script src="script.js"></script>
-<script src="script_patch.js"></script>
 </body>
 </html>
